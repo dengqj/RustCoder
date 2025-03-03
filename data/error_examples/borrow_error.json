@@ -1,0 +1,6 @@
+{
+    "error": "error[E0502]: cannot borrow `*self` as mutable because it is also borrowed as immutable",
+    "context": "This error occurs when you try to borrow a value mutably while an immutable borrow exists",
+    "solution": "Ensure mutable and immutable borrows don't overlap by using separate scopes or cloning values",
+    "example": "// Code example showing the fix..."
+  }

@@ -1,0 +1,9 @@
+{
+    "query": "Create a simple web-based todo application",
+    "example": "This example shows a complete Rust todo app using Actix-web with SQLite backend...",
+    "project_files": {
+      "src/main.rs": "// Todo app main file content...",
+      "src/models.rs": "// Todo app model definitions...",
+      "Cargo.toml": "// Todo app dependencies..."
+    }
+  }
