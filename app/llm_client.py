@@ -7,7 +7,7 @@ class LlamaEdgeClient:
     """Client for interacting with LlamaEdge OpenAI-compatible API"""
     
     def __init__(self, base_url: str = "http://localhost:8080/v1", 
-                 llm_model: str = "Qwen2.5-Coder-32B-Instruct", 
+                 llm_model: str = "Qwen2.5-Coder-3B-Instruct", 
                  embed_model: str = "gte-Qwen2-1.5B-instruct"):
         self.base_url = base_url
         self.llm_model = llm_model
@@ -22,20 +22,21 @@ class LlamaEdgeClient:
         
         url = f"{self.base_url}/chat/completions"
         
+        # Using chatml format for Qwen2.5 models
+        formatted_prompt = f"<|im_start|>system\n{system_message}<|im_end|>\n<|im_start|>user\n{prompt}<|im_end|>\n<|im_start|>assistant"
+        
         payload = {
             "model": self.llm_model,
-            "messages": [
-                {"role": "system", "content": system_message},
-                {"role": "user", "content": prompt}
-            ],
+            "prompt": formatted_prompt,
             "max_tokens": max_tokens,
-            "temperature": temperature
+            "temperature": temperature,
+            "stop": ["<|im_end|>"]
         }
         
         try:
             response = requests.post(url, json=payload)
             response.raise_for_status()
-            return response.json()["choices"][0]["message"]["content"]
+            return response.json()["choices"][0]["text"].strip()
         except requests.exceptions.RequestException as e:
             print(f"Error calling LLM API: {e}")
             return ""

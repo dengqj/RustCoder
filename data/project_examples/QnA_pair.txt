@@ -1,0 +1,1031 @@
+Rust Project Q&A Collection
+Q1: How can I build a feature-rich command-line calculator in Rust?
+A1: ```rust
+// Cargo.toml
+[package]
+name = "rust-calculator"
+version = "0.1.0"
+edition = "2021"
+[dependencies]
+rustyline = "10.0"
+anyhow = "1.0"
+// src/main.rs
+use std::collections::HashMap;
+use rustyline::error::ReadlineError;
+use rustyline::Editor;
+use anyhow::{Result, Context};
+enum Operation {
+Add,
+Subtract,
+Multiply,
+Divide,
+Power,
+SquareRoot,
+}
+struct Calculator {
+memory: HashMap<String, f64>,
+}
+impl Calculator {
+fn new() -> Self {
+Calculator {
+memory: HashMap::new(),
+}
+}
+Copyfn calculate(&mut self, input: &str) -> Result<f64> {
+    let tokens: Vec<&str> = input.split_whitespace().collect();
+    
+    match tokens.len() {
+        3 => {
+            let op = match tokens[1] {
+                "+" => Operation::Add,
+                "-" => Operation::Subtract,
+                "*" => Operation::Multiply,
+                "/" => Operation::Divide,
+                "^" => Operation::Power,
+                _ => anyhow::bail!("Invalid operation"),
+            };
+
+            let a = self.parse_number(tokens[0])?;
+            let b = self.parse_number(tokens[2])?;
+
+            match op {
+                Operation::Add => Ok(a + b),
+                Operation::Subtract => Ok(a - b),
+                Operation::Multiply => Ok(a * b),
+                Operation::Divide => {
+                    if b == 0.0 {
+                        anyhow::bail!("Division by zero")
+                    } else {
+                        Ok(a / b)
+                    }
+                },
+                Operation::Power => Ok(a.powf(b)),
+                _ => anyhow::bail!("Invalid operation"),
+            }
+        },
+        2 => {
+            let op = match tokens[0] {
+                "sqrt" => Operation::SquareRoot,
+                _ => anyhow::bail!("Invalid operation"),
+            };
+
+            let a = self.parse_number(tokens[1])?;
+
+            match op {
+                Operation::SquareRoot => Ok(a.sqrt()),
+                _ => anyhow::bail!("Invalid operation"),
+            }
+        },
+        _ => anyhow::bail!("Invalid input format"),
+    }
+}
+
+fn parse_number(&mut self, token: &str) -> Result<f64> {
+    if let Ok(num) = token.parse() {
+        Ok(num)
+    } else if let Some(val) = self.memory.get(token) {
+        Ok(*val)
+    } else {
+        anyhow::bail!("Invalid number or variable")
+    }
+}
+
+fn store_in_memory(&mut self, var_name: &str, value: f64) {
+    self.memory.insert(var_name.to_string(), value);
+}
+
+fn print_memory(&self) {
+    for (var, value) in &self.memory {
+        println!("{} = {}", var, value);
+    }
+}
+}
+fn main() -> Result<()> {
+let mut rl = Editor::<()>::new()?;
+let mut calculator = Calculator::new();
+Copyprintln!("Rust Calculator");
+println!("Supported operations: + - * / ^ sqrt");
+println!("Example: 5 + 3, sqrt 16, 2 ^ 3");
+println!("Type 'memory' to view stored variables");
+println!("Type 'store x 10' to store a value");
+println!("Type 'exit' to quit");
+
+loop {
+    let readline = rl.readline(">>> ");
+    match readline {
+        Ok(line) => {
+            rl.add_history_entry(line.as_str());
+
+            match line.as_str() {
+                "exit" => break,
+                "memory" => calculator.print_memory(),
+                _ if line.starts_with("store ") => {
+                    let parts: Vec<&str> = line.split_whitespace().collect();
+                    if parts.len() == 3 {
+                        if let Ok(value) = parts[2].parse() {
+                            calculator.store_in_memory(parts[1], value);
+                        }
+                    }
+                },
+                _ => {
+                    match calculator.calculate(&line) {
+                        Ok(result) => println!("Result: {}", result),
+                        Err(e) => eprintln!("Error: {}", e),
+                    }
+                }
+            }
+        },
+        Err(ReadlineError::Interrupted) => {
+            println!("CTRL-C");
+            break;
+        },
+        Err(ReadlineError::Eof) => {
+            println!("CTRL-D");
+            break;
+        },
+        Err(err) => {
+            println!("Error: {:?}", err);
+            break;
+        }
+    }
+}
+
+Ok(())
+}
+Copy
+## Q2: How can I create a robust todo list application with persistent storage in Rust?
+A2: ```rust
+// Cargo.toml
+[package]
+name = "rust-todo-app"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+chrono = "0.4"
+uuid = { version = "1.3", features = ["v4"] }
+
+// src/main.rs
+use std::fs;
+use std::path::PathBuf;
+use serde::{Serialize, Deserialize};
+use chrono::{DateTime, Utc};
+use uuid::Uuid;
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+enum Priority {
+    Low,
+    Medium,
+    High,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct Todo {
+    id: Uuid,
+    title: String,
+    description: Option<String>,
+    completed: bool,
+    priority: Priority,
+    created_at: DateTime<Utc>,
+    completed_at: Option<DateTime<Utc>>,
+}
+
+struct TodoManager {
+    todos: Vec<Todo>,
+    storage_path: PathBuf,
+}
+
+impl TodoManager {
+    fn new() -> Self {
+        let storage_path = dirs::home_dir()
+            .expect("Could not find home directory")
+            .join(".rust_todo_app")
+            .join("todos.json");
+
+        fs::create_dir_all(storage_path.parent().unwrap())
+            .expect("Could not create storage directory");
+
+        let todos = Self::load_todos(&storage_path);
+
+        TodoManager {
+            todos,
+            storage_path,
+        }
+    }
+
+    fn load_todos(path: &PathBuf) -> Vec<Todo> {
+        if path.exists() {
+            let content = fs::read_to_string(path)
+                .expect("Could not read todos file");
+            serde_json::from_str(&content)
+                .unwrap_or_else(|_| Vec::new())
+        } else {
+            Vec::new()
+        }
+    }
+
+    fn save_todos(&self) {
+        let json = serde_json::to_string_pretty(&self.todos)
+            .expect("Could not serialize todos");
+        fs::write(&self.storage_path, json)
+            .expect("Could not write todos to file");
+    }
+
+    fn add_todo(&mut self, title: String, description: Option<String>, priority: Priority) {
+        let todo = Todo {
+            id: Uuid::new_v4(),
+            title,
+            description,
+            completed: false,
+            priority,
+            created_at: Utc::now(),
+            completed_at: None,
+        };
+        self.todos.push(todo);
+        self.save_todos();
+    }
+
+    fn list_todos(&self) {
+        for todo in &self.todos {
+            println!(
+                "ID: {} | Title: {} | Priority: {:?} | Completed: {}",
+                todo.id, todo.title, todo.priority, todo.completed
+            );
+        }
+    }
+
+    fn complete_todo(&mut self, id: &Uuid) {
+        if let Some(todo) = self.todos.iter_mut().find(|t| t.id == *id) {
+            todo.completed = true;
+            todo.completed_at = Some(Utc::now());
+            self.save_todos();
+        }
+    }
+
+    fn remove_todo(&mut self, id: &Uuid) {
+        self.todos.retain(|todo| todo.id != *id);
+        self.save_todos();
+    }
+}
+
+fn main() {
+    let mut manager = TodoManager::new();
+
+    // Example usage
+    manager.add_todo(
+        "Learn Rust".to_string(), 
+        Some("Complete Rust programming course".to_string()), 
+        Priority::High
+    );
+
+    manager.add_todo(
+        "Build Todo App".to_string(), 
+        Some("Implement a CLI todo application".to_string()), 
+        Priority::Medium
+    );
+
+    manager.list_todos();
+}
+
+Q3: How can I build a simple URL shortener service in Rust?
+A3: ```rust
+// Cargo.toml
+[package]
+name = "rust-url-shortener"
+version = "0.1.0"
+edition = "2021"
+[dependencies]
+rocket = "0.5.0-rc.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+rand = "0.8"
+rusqlite = "0.28"
+// src/main.rs
+#[macro_use] extern crate rocket;
+use rocket::State;
+use rocket::serde::json::Json;
+use rocket::response::Redirect;
+use std::collections::HashMap;
+use std::sync::Mutex;
+use rand::distributions::{Alphanumeric, DistString};
+use rusqlite::{Connection, Result};
+use serde::{Deserialize, Serialize};
+struct UrlDatabase {
+conn: Mutex<Connection>,
+}
+#[derive(Deserialize, Serialize)]
+struct UrlRequest {
+long_url: String,
+}
+#[derive(Deserialize, Serialize)]
+struct UrlResponse {
+short_url: String,
+}
+impl UrlDatabase {
+fn new() -> Result<Self> {
+let conn = Connection::open("urls.db")?;
+conn.execute(
+"CREATE TABLE IF NOT EXISTS urls (
+short_code TEXT PRIMARY KEY,
+long_url TEXT NOT NULL
+)",
+[],
+)?;
+Copy    Ok(UrlDatabase { conn: Mutex::new(conn) })
+}
+
+fn insert_url(&self, short_code: &str, long_url: &str) -> Result<()> {
+    let conn = self.conn.lock().unwrap();
+    conn.execute(
+        "INSERT OR REPLACE INTO urls (short_code, long_url) VALUES (?1, ?2)",
+        [short_code, long_url],
+    )?;
+    Ok(())
+}
+
+fn get_long_url(&self, short_code: &str) -> Result<Option<String>> {
+    let conn = self.conn.lock().unwrap();
+    let mut stmt = conn.prepare("SELECT long_url FROM urls WHERE short_code = ?1")?;
+    let url_iter = stmt.query_map([short_code], |row| row.get(0))?;
+    
+    for url in url_iter {
+        return Ok(Some(url?));
+    }
+    Ok(None)
+}
+}
+#[post("/shorten", format = "json", data = "<url_request>")]
+fn shorten_url(
+url_request: Json<UrlRequest>,
+db: &State<UrlDatabase>
+) -> Json<UrlResponse> {
+let short_code = Alphanumeric.sample_string(&mut rand::thread_rng(), 6);
+Copydb.insert_url(&short_code, &url_request.long_url)
+    .expect("Failed to insert URL");
+
+Json(UrlResponse { 
+    short_url: format!("http://localhost:8000/{}", short_code) 
+})
+}
+#[get("/<short_code>")]
+fn redirect(
+short_code: &str,
+db: &State<UrlDatabase>
+) -> Result<Redirect, &'static str> {
+match db.get_long_url(short_code) {
+Ok(Some(long_url)) => Ok(Redirect::to(long_url)),
+_ => Err("URL not found")
+}
+}
+#[launch]
+fn rocket() -> _ {
+let url_db = UrlDatabase::new().expect("Failed to create database");
+Copyrocket::build()
+    .manage(url_db)
+    .mount("/", routes![shorten_url, redirect])
+}
+Copy
+## Q4: How can I create a basic file encryption tool in Rust?
+A4: ```rust
+// Cargo.toml
+[package]
+name = "rust-file-encryptor"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+openssl = "0.10"
+clap = { version = "4.0", features = ["derive"] }
+
+// src/main.rs
+use std::fs::File;
+use std::io::{Read, Write};
+use std::path::Path;
+use openssl::symm::{Cipher, Crypter, Mode};
+use clap::{Parser, Subcommand};
+
+#[derive(Parser)]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    Encrypt {
+        #[arg(short, long)]
+        input: String,
+        
+        #[arg(short, long)]
+        output: String,
+        
+        #[arg(short, long)]
+        password: String,
+    },
+    Decrypt {
+        #[arg(short, long)]
+        input: String,
+        
+        #[arg(short, long)]
+        output: String,
+        
+        #[arg(short, long)]
+        password: String,
+    },
+}
+
+fn encrypt_file(input_path: &str, output_path: &str, password: &str) -> std::io::Result<()> {
+    let mut input_file = File::open(input_path)?;
+    let mut output_file = File::create(output_path)?;
+    
+    let cipher = Cipher::aes_256_cbc();
+    let key = openssl::hash::hash(
+        openssl::hash::MessageDigest::sha256(), 
+        password.as_bytes()
+    )?;
+    
+    let iv = [0u8; 16];
+    
+    let mut encrypter = Crypter::new(
+        cipher, 
+        Mode::Encrypt, 
+        &key, 
+        Some(&iv)
+    )?;
+    
+    let mut input_buffer = [0u8; 4096];
+    let mut encrypted_buffer = [0u8; 4096 + cipher.block_size()];
+    
+    loop {
+        let read_count = input_file.read(&mut input_buffer)?;
+        if read_count == 0 {
+            break;
+        }
+        
+        let update_count = encrypter.update(&input_buffer[..read_count], &mut encrypted_buffer)?;
+        output_file.write_all(&encrypted_buffer[..update_count])?;
+    }
+    
+    let final_count = encrypter.finalize(&mut encrypted_buffer)?;
+    output_file.write_all(&encrypted_buffer[..final_count])?;
+    
+    Ok(())
+}
+
+fn decrypt_file(input_path: &str, output_path: &str, password: &str) -> std::io::Result<()> {
+    let mut input_file = File::open(input_path)?;
+    let mut output_file = File::create(output_path)?;
+    
+    let cipher = Cipher::aes_256_cbc();
+    let key = openssl::hash::hash(
+        openssl::hash::MessageDigest::sha256(), 
+        password.as_bytes()
+    )?;
+    
+    let iv = [0u8; 16];
+    
+    let mut decrypter = Crypter::new(
+        cipher, 
+        Mode::Decrypt, 
+        &key, 
+        Some(&iv)
+    )?;
+    
+    let mut input_buffer = [0u8; 4096];
+    let mut decrypted_buffer = [0u8; 4096 + cipher.block_size()];
+    
+    loop {
+        let read_count = input_file.read(&mut input_buffer)?;
+        if read_count == 0 {
+            break;
+        }
+        
+        let update_count = decrypter.update(&input_buffer[..read_count], &mut decrypted_buffer)?;
+        output_file.write_all(&decrypted_buffer[..update_count])?;
+    }
+    
+    let final_count = decrypter.finalize(&mut decrypted_buffer)?;
+    output_file.write_all(&decrypted_buffer[..final_count])?;
+    
+    Ok(())
+}
+
+fn main() -> std::io::Result<()> {
+    let cli = Cli::parse();
+    
+    match &cli.command {
+        Commands::Encrypt { input, output, password } => {
+            encrypt_file(input, output, password)?;
+            println!("File encrypted successfully");
+        },
+        Commands::Decrypt { input, output, password } => {
+            decrypt_file(input, output, password)?;
+            println!("File decrypted successfully");
+        },
+    }
+    
+    Ok(())
+}
+Q5: How can I build a simple web scraper in Rust?
+A5: ```rust
+// Cargo.toml
+[package]
+name = "rust-web-scraper"
+version = "0.1.0"
+edition = "2021"
+[dependencies]
+reqwest = { version = "0.11", features = ["blocking"] }
+scraper = "0.13"
+csv = "1.1"
+clap = { version = "4.0", features = ["derive"] }
+// src/main.rs
+use reqwest::blocking::Client;
+use scraper::{Html, Selector};
+use std::error::Error;
+use clap::Parser;
+#[derive(Parser)]
+struct Cli {
+#[arg(short, long)]
+url: String,
+Copy#[arg(short, long)]
+output: String,
+}
+fn scrape_website(url: &str) -> Result<Vec<String>, Box<dyn Error>> {
+let client = Client::new();
+let response = client.get(url).send()?;
+let body = response.text()?;
+Copylet document = Html::parse_document(&body);
+let title_selector = Selector::parse("h1, h2, h3").unwrap();
+let paragraph_selector = Selector::parse("p").unwrap();
+
+let mut results = Vec::new();
+
+// Scrape titles
+for element in document.select(&title_selector) {
+    results.push(element.text().collect::<String>());
+}
+
+// Scrape paragraphs
+for element in document.select(&paragraph_selector) {
+    results.push(element.text().collect::<String>());
+}
+
+Ok(results)
+}
+fn save_to_csv(data: &[String], output_path: &str) -> Result<(), Box<dyn Error>> {
+let mut writer = csv::Writer::from_path(output_path)?;
+Copyfor item in data {
+    writer.write_record(&[item])?;
+}
+
+writer.flush()?;
+Ok(())
+}
+fn main() -> Result<(), Box<dyn Error>> {
+let cli = Cli::parse();
+Copylet scraped_data = scrape_website(&cli.url)?;
+save_to_csv(&scraped_data, &cli.output)?;
+
+println!("Scraped {} items", scraped_data.len());
+Ok(())
+}
+Copy
+## Q6: How can I create a simple chat server in Rust?
+A6: ```rust
+// Cargo.toml
+[package]
+name = "rust-chat-server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+futures = "0.3"
+
+// src/main.rs
+use tokio::net::{TcpListener, TcpStream};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::sync::broadcast;
+use std::error::Error;
+
+const MAX_CLIENTS: usize = 10;
+
+async fn handle_client(
+    mut socket: TcpStream, 
+    tx: broadcast::Sender<String>
+) -> Result<(), Box<dyn Error>> {
+    let (reader, mut writer) = socket.split();
+    let mut reader = tokio::io::BufReader::new(reader);
+    let mut rx = tx.subscribe();
+    
+    let mut line = String::new();
+    let mut broadcast_rx = tokio::spawn(async move {
+        loop {
+            tokio::select! {
+                result = rx.recv() => {
+                    if let Ok(msg) = result {
+                        writer.write_all(msg.as_bytes()).await.unwrap();
+                    }
+                }
+            }
+        }
+    });
+    
+    loop {
+        line.clear();
+        reader.read_line(&mut line).await?;
+        
+        if line.trim().is_empty() {
+            break;
+        }
+        
+        tx.send(line.clone())?;
+    }
+    
+    broadcast_rx.abort();
+    Ok(())
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
+    let listener = TcpListener::bind("127.0.0.1:8080").await?;
+    let (tx, _) = broadcast::channel(MAX_CLIENTS);
+    
+    println!("Chat server running on 127.0.0.1:8080");
+    
+    loop {
+        let (socket, _) = listener.accept().await?;
+        let tx_clone = tx.clone();
+        
+        tokio::spawn(async move {
+            if let Err(e) = handle_client(socket, tx_clone).await {
+                eprintln!("Error handling client: {}", e);
+            }
+        });
+    }
+}
+Q7: How can I build a markdown parser in Rust?
+A7: ```rust
+// Cargo.toml
+[package]
+name = "rust-markdown-parser"
+version = "0.1.0"
+edition = "2021"
+[dependencies]
+regex = "1.5"
+// src/main.rs
+use std::fs;
+use regex::Regex;
+struct MarkdownParser {
+input: String,
+}
+impl MarkdownParser {
+fn new(input: String) -> Self {
+MarkdownParser { input }
+}
+Copyfn parse_headers(&self) -> String {
+    let header_regex = Regex::new(r"^(#{1,6})\s+(.+)$").unwrap();
+    let mut output = self.input.clone();
+
+    for line in self.input.lines() {
+        if let Some(captures) = header_regex.captures(line) {
+            let level = captures.get(1).unwrap().as_str().len();
+            let text = captures.get(2).unwrap().as_str();
+            let html_header = format!("<h{}>{}</h{}>", level, text, level);
+            output = output.replace(line, &html_header);
+        }
+    }
+    output
+}
+
+fn parse_bold_italic(&self, html: String) -> String {
+    let bold_regex = Regex::new(r"\*\*(.*?)\*\*").unwrap();
+    let italic_regex = Regex::new(r"\*(.*?)\*").unwrap();
+
+    let bold_html = bold_regex.replace_all(&html, "<strong>$1</strong>");
+    let italic_html = italic_regex.replace_all(&bold_html, "<em>$1</em>");
+    
+    italic_html.into()
+}
+
+fn parse_links(&self, html: String) -> String {
+    let link_regex = Regex::new(r"\[([^\]]+)\]\(([^\)]+)\)").unwrap();
+    link_regex.replace_all(&html, "<a href=\"$2\">$1</a>").into()
+}
+
+fn parse(&self) -> String {
+    let headers_html = self.parse_headers();
+    let formatted_html = self.parse_bold_italic(headers_html);
+    let final_html = self.parse_links(formatted_html);
+    final_html
+}
+}
+fn main() {
+let markdown = fs::read_to_string("input.md").expect("Could not read file");
+let parser = MarkdownParser::new(markdown);
+let html = parser.parse();
+Copyfs::write("output.html", html).expect("Could not write file");
+}
+Copy
+## Q8: How can I create a key-value store in Rust?
+A8: ```rust
+// Cargo.toml
+[package]
+name = "rust-key-value-store"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+// src/main.rs
+use std::collections::HashMap;
+use std::fs;
+use std::path::PathBuf;
+use serde::{Serialize, Deserialize};
+
+#[derive(Serialize, Deserialize)]
+struct KeyValueStore {
+    data: HashMap<String, String>,
+    storage_path: PathBuf,
+}
+
+impl KeyValueStore {
+    fn new(storage_path: PathBuf) -> Self {
+        fs::create_dir_all(storage_path.parent().unwrap())
+            .expect("Could not create storage directory");
+
+        let data = if storage_path.exists() {
+            let content = fs::read_to_string(&storage_path)
+                .expect("Could not read storage file");
+            serde_json::from_str(&content)
+                .unwrap_or_else(|_| HashMap::new())
+        } else {
+            HashMap::new()
+        };
+
+        KeyValueStore { 
+            data, 
+            storage_path 
+        }
+    }
+
+    fn set(&mut self, key: String, value: String) {
+        self.data.insert(key, value);
+        self.save();
+    }
+
+    fn get(&self, key: &str) -> Option<&String> {
+        self.data.get(key)
+    }
+
+    fn delete(&mut self, key: &str) {
+        self.data.remove(key);
+        self.save();
+    }
+
+    fn save(&self) {
+        let json = serde_json::to_string_pretty(&self.data)
+            .expect("Could not serialize data");
+        fs::write(&self.storage_path, json)
+            .expect("Could not write data to file");
+    }
+
+    fn list_keys(&self) -> Vec<&String> {
+        self.data.keys().collect()
+    }
+}
+
+fn main() {
+    let storage_path = dirs::home_dir()
+        .expect("Could not find home directory")
+        .join(".rust_kv_store")
+        .join("store.json");
+
+    let mut store = KeyValueStore::new(storage_path);
+
+    store.set("name".to_string(), "Alice".to_string());
+    store.set("age".to_string(), "30".to_string());
+
+    println!("Name: {:?}", store.get("name"));
+    println!("Keys: {:?}", store.list_keys());
+}
+Q9: How can I build a basic HTTP server in Rust?
+A9: ```rust
+// Cargo.toml
+[package]
+name = "rust-http-server"
+version = "0.1.0"
+edition = "2021"
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+hyper = { version = "0.14", features = ["full"] }
+http-body = "0.4"
+mime = "0.3"
+// src/main.rs
+use hyper::{Body, Request, Response, Server, Method, StatusCode};
+use hyper::service::{make_service_fn, service_fn};
+use std::convert::Infallible;
+use std::net::SocketAddr;
+use std::fs;
+use mime;
+async fn handle_request(req: Request<Body>) -> Result<Response<Body>, Infallible> {
+match (req.method(), req.uri().path()) {
+(&Method::GET, "/") => {
+let content = fs::read_to_string("index.html")
+.unwrap_or_else(|_| "Welcome to Rust HTTP Server".to_string());
+Copy        Ok(Response::new(Body::from(content)))
+    },
+    (&Method::GET, "/hello") => {
+        Ok(Response::new(Body::from("Hello from Rust HTTP Server!")))
+    },
+    (&Method::GET, "/files") => {
+        let files: Vec<String> = fs::read_dir(".")
+            .unwrap()
+            .filter_map(|entry| {
+                entry.ok().and_then(|e| 
+                    e.file_name().into_string().ok()
+                )
+            })
+            .collect();
+        
+        let response = serde_json::to_string(&files).unwrap();
+        
+        Ok(Response::new(Body::from(response)))
+    },
+    _ => {
+        let mut response = Response::new(Body::from("Not Found"));
+        *response.status_mut() = StatusCode::NOT_FOUND;
+        Ok(response)
+    }
+}
+}
+#[tokio::main]
+async fn main() {
+let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
+Copylet make_svc = make_service_fn(|_conn| async {
+    Ok::<_, Infallible>(service_fn(handle_request))
+});
+
+let server = Server::bind(&addr).serve(make_svc);
+
+println!("Server running on http://{}", addr);
+
+if let Err(e) = server.await {
+    eprintln!("server error: {}", e);
+}
+}
+Copy
+## Q10: How can I create a Tic-Tac-Toe game in Rust?
+A10: ```rust
+// Cargo.toml
+[package]
+name = "rust-tic-tac-toe"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rand = "0.8"
+
+// src/main.rs
+use std::io;
+use rand::Rng;
+
+#[derive(Clone, Copy, PartialEq)]
+enum Player {
+    X,
+    O,
+}
+
+struct TicTacToe {
+    board: [[Option<Player>; 3]; 3],
+    current_player: Player,
+}
+
+impl TicTacToe {
+    fn new() -> Self {
+        TicTacToe {
+            board: [[None; 3]; 3],
+            current_player: Player::X,
+        }
+    }
+
+    fn display_board(&self) {
+        for row in &self.board {
+            for cell in row {
+                match cell {
+                    Some(Player::X) => print!(" X "),
+                    Some(Player::O) => print!(" O "),
+                    None => print!(" - "),
+                }
+            }
+            println!();
+        }
+    }
+
+    fn make_move(&mut self, row: usize, col: usize) -> Result<(), String> {
+        if row >= 3 || col >= 3 {
+            return Err("Invalid move: Out of bounds".to_string());
+        }
+
+        if self.board[row][col].is_some() {
+            return Err("Invalid move: Cell already occupied".to_string());
+        }
+
+        self.board[row][col] = Some(self.current_player);
+        self.current_player = match self.current_player {
+            Player::X => Player::O,
+            Player::O => Player::X,
+        };
+
+        Ok(())
+    }
+
+    fn check_winner(&self) -> Option<Player> {
+        // Check rows and columns
+        for i in 0..3 {
+            if self.check_line(self.board[i][0], self.board[i][1], self.board[i][2]) {
+                return self.board[i][0];
+            }
+            if self.check_line(self.board[0][i], self.board[1][i], self.board[2][i]) {
+                return self.board[0][i];
+            }
+        }
+
+        // Check diagonals
+        if self.check_line(self.board[0][0], self.board[1][1], self.board[2][2]) {
+            return self.board[0][0];
+        }
+        if self.check_line(self.board[0][2], self.board[1][1], self.board[2][0]) {
+            return self.board[0][2];
+        }
+
+        None
+    }
+
+    fn check_line(&self, a: Option<Player>, b: Option<Player>, c: Option<Player>) -> bool {
+        a.is_some() && a == b && b == c
+    }
+
+    fn is_board_full(&self) -> bool {
+        self.board.iter().flatten().all(|cell| cell.is_some())
+    }
+}
+
+fn main() {
+    let mut game = TicTacToe::new();
+    let mut rng = rand::thread_rng();
+
+    println!("Welcome to Tic-Tac-Toe!");
+
+    loop {
+        game.display_board();
+        
+        if game.current_player == Player::X {
+            println!("Your turn (Player X)");
+            let mut input = String::new();
+            
+            println!("Enter row (0-2):");
+            io::stdin().read_line(&mut input).expect("Failed to read line");
+            let row: usize = input.trim().parse().expect("Please enter a number");
+
+            input.clear();
+            println!("Enter column (0-2):");
+            io::stdin().read_line(&mut input).expect("Failed to read line");
+            let col: usize = input.trim().parse().expect("Please enter a number");
+
+            match game.make_move(row, col) {
+                Ok(_) => {},
+                Err(e) => {
+                    println!("{}", e);
+                    continue;
+                }
+            }
+        } else {
+            // AI move (random)
+            loop {
+                let row = rng.gen_range(0..3);
+                let col = rng.gen_range(0..3);
+                
+                if let Ok(_) = game.make_move(row, col) {
+                    break;
+                }
+            }
+        }
+
+        if let Some(winner) = game.check_winner() {
+            game.display_board();
+            println!("Player {:?} wins!", winner);
+            break;
+        }
+
+        if game.is_board_full() {
+            game.display_board();
+            println!("It's a draw!");
+            break;
+        }
+    }
+}

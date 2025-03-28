@@ -59,3 +59,10 @@ class QdrantStore:
         )
         
         return [hit.payload for hit in results]
+
+    def upsert(self, collection_name: str, points: List[Dict[str, Any]]):
+        """Upsert points to collection with id, vector, and payload"""
+        self.client.upsert(
+            collection_name=collection_name,
+            points=points
+        )
