@@ -58,3 +58,19 @@ class LlamaEdgeClient:
         except requests.exceptions.RequestException as e:
             print(f"Error getting embeddings: {e}")
             return []
+    
+
+    def generate_text_with_tools(self, prompt: str) -> str:
+        """Generate text with tool-calling capability"""
+        from app.llm_tools import VectorStoreQueryTool
+
+        query_tool = VectorStoreQueryTool()
+
+        # Use the existing generate_text method instead of trying to access self.model
+        system_message = """You are an expert Rust developer. You can use tools to access information when needed.
+        When creating a project, follow Rust best practices and include proper error handling."""
+        
+        # Call the existing generate_text method
+        response = self.generate_text(prompt, system_message=system_message)
+        
+        return response
