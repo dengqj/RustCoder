@@ -1,0 +1,88 @@
+Q1: error[E0308]: mismatched types
+rustCopyfn main() {
+    let x: i32 = "hello";
+}
+A1: Fix Type Mismatch
+rustCopyfn main() {
+    let x: i32 = "hello".parse().unwrap(); // Type conversion attempt
+    // OR
+    let x: String = "hello".to_string(); // Correct type assignment
+}
+Q2: error[E0382]: use of moved value
+rustCopyfn main() {
+    let s1 = String::from("hello");
+    let s2 = s1;
+    println!("{}", s1);
+}
+A2: Resolve Ownership Issue
+rustCopyfn main() {
+    let s1 = String::from("hello");
+    let s2 = s1.clone(); // Create a deep copy
+    println!("{} {}", s1, s2);
+}
+Q3: error[E0106]: missing lifetime specifier
+rustCopyfn longest(x: &str, y: &str) -> &str {
+    if x.len() > y.len() { x } else { y }
+}
+A3: Add Lifetime Parameters
+rustCopyfn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
+    if x.len() > y.len() { x } else { y }
+}
+Q4: error[E0277]: trait bounds not satisfied
+rustCopyfn print_item<T>(item: T) {
+    println!("{}", item);
+}
+A4: Add Trait Bound
+rustCopyfn print_item<T: std::fmt::Display>(item: T) {
+    println!("{}", item);
+}
+Q5: error[E0599]: no method found for type
+rustCopylet vec = vec![1, 2, 3];
+vec.push("hello");
+A5: Maintain Type Consistency
+rustCopylet mut vec: Vec<i32> = vec![1, 2, 3];
+vec.push(4); // Only push same type
+
+// Or use a more flexible Vec
+let mut vec: Vec<&str> = vec!["a", "b", "c"];
+vec.push("hello");
+Q6: error[E0716]: temporary value dropped while borrowed
+rustCopylet mut result = &String::from("hello").len();
+A6: Extend Lifetime
+rustCopylet s = String::from("hello");
+let result = &s.len();
+Q7: error[E0507]: cannot move out of borrowed content
+rustCopyfn process(input: &String) -> String {
+    input.to_owned()
+}
+A7: Return Reference or Clone
+rustCopyfn process(input: &String) -> String {
+    input.clone() // Create a new owned String
+}
+Q8: error[E0369]: binary operation + cannot be applied to type
+rustCopylet x = "hello" + "world";
+A8: Use Proper String Concatenation
+rustCopylet x = format!("{}{}", "hello", "world");
+// OR
+let x = "hello".to_string() + "world";
+Q9: error[E0072]: recursive type has infinite size
+rustCopyenum List {
+    Cons(i32, List),
+}
+A9: Use Box for Recursive Types
+rustCopyenum List {
+    Cons(i32, Box<List>),
+    Nil,
+}
+Q10: error[E0401]: can't use generic parameter from outer function
+rustCopyfn outer<T>() {
+    fn inner() {
+        let x: T = ...;
+    }
+}
+A10: Pass Generic Type as Parameter
+rustCopyfn outer<T>() {
+    fn inner(x: T) {
+        // Use passed T
+    }
+}
