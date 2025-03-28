@@ -20,6 +20,10 @@ services:
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6333
       - LLAMAEDGE_URL=http://host.docker.internal:8080/v1
+      - LLAMAEDGE_MODEL=Qwen2.5-Coder-3B-Instruct
+      - LLAMAEDGE_EMBED_MODEL=gte-Qwen2-1.5B-instruct
+      - CARGO_PATH=/root/.cargo/bin/cargo
+      - RUST_COMPILER_PATH=/root/.cargo/bin/rustc
     volumes:
       - ./output:/app/output
       - ./data:/app/data

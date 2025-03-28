@@ -6,12 +6,11 @@ from typing import Dict, List, Optional, Union
 class LlamaEdgeClient:
     """Client for interacting with LlamaEdge OpenAI-compatible API"""
     
-    def __init__(self, base_url: str = "http://localhost:8080/v1", 
-                 llm_model: str = "Qwen2.5-Coder-3B-Instruct", 
-                 embed_model: str = "gte-Qwen2-1.5B-instruct"):
-        self.base_url = base_url
-        self.llm_model = llm_model
-        self.embed_model = embed_model
+    def __init__(self):
+        # Use environment variables with defaults
+        self.base_url = os.getenv("LLAMAEDGE_URL", "http://localhost:8080/v1")
+        self.llm_model = os.getenv("LLAMAEDGE_MODEL", "Qwen2.5-Coder-3B-Instruct")
+        self.embed_model = os.getenv("LLAMAEDGE_EMBED_MODEL", "gte-Qwen2-1.5B-instruct")
         
     def generate_text(self, 
                      prompt: str, 

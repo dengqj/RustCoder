@@ -6,14 +6,16 @@ class RustCompiler:
     """Handles compilation of Rust Cargo projects"""
     
     def __init__(self):
-        pass
+        # Use environment variables with defaults
+        self.cargo_path = os.getenv("CARGO_PATH", "cargo")
+        self.rustc_path = os.getenv("RUST_COMPILER_PATH", "rustc")
         
     def build_project(self, project_path: str) -> Tuple[bool, Optional[str]]:
         """Build a Rust project with cargo"""
         try:
             # Run cargo build
             result = subprocess.run(
-                ["cargo", "build"],
+                [self.cargo_path, "build"],
                 cwd=project_path,
                 capture_output=True,
                 text=True,
@@ -54,7 +56,7 @@ class RustCompiler:
         """Run a Rust project with cargo run"""
         try:
             result = subprocess.run(
-                ["cargo", "run"],
+                [self.cargo_path, "run"],
                 cwd=project_path,
                 capture_output=True,
                 text=True,
