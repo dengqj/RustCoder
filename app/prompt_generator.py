@@ -39,9 +39,32 @@ $additional_requirements
 <|im_start|>assistant
             """)
             
-    def generate_prompt(self, project_description: str, additional_requirements: Optional[str] = "") -> str:
-        """Generate a prompt for the LLM"""
-        return self.template.substitute(
-            project_description=project_description,
-            additional_requirements=additional_requirements or ""
-        )
+    def generate_prompt(self, description: str, requirements: Optional[str] = None) -> str:
+        """Generate a prompt for the LLM that includes tool usage instructions"""
+        
+        tool_instructions = """
+You have access to a vector database with Rust project examples and error solutions.
+When you need a reference or example, use the query_examples function as follows:
+
+To find project examples:
+
+query_examples(query="chess game", collection="project_examples", limit=2)
+
+
+To find error solutions:
+query_examples(query="error message", collection="error_examples", limit=2)
+
+First, analyze what kind of Rust project is needed. Then query relevant examples before writing code.
+"""
+        
+        base_prompt = f"""
+Create a Rust project based on this description:
+{description}
+
+{requirements or ""}
+
+Generate all required files for a complete, compilable Rust project.
+Use proper Rust best practices and error handling.
+Format each file in code blocks with the filename as the header.
+"""
+        return tool_instructions + base_prompt

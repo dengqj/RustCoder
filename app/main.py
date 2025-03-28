@@ -84,7 +84,9 @@ async def handle_project_generation(
     requirements: Optional[str]
 ):
     """Handle the project generation process"""
-    os.makedirs(project_dir, exist_ok=True)
+    # Create project directory structure
+    os.makedirs(os.path.join(project_dir, "src"), exist_ok=True)
+    
     status = {
         "project_id": project_id,
         "status": "generating",
@@ -97,19 +99,54 @@ async def handle_project_generation(
     similar_projects = vector_store.search("project_examples", query_embedding, limit=1)
     
     # If we found a similar project, use it as reference
+    example_text = ""
     if similar_projects:
-        example_prompt = f"\nHere's a similar project you can use as reference:\n{similar_projects[0]['example']}"
+        example_text = f"\nHere's a similar project you can use as reference:\n{similar_projects[0]['example']}"
         if requirements:
-            requirements += example_prompt
+            requirements += example_text
         else:
-            requirements = example_prompt
+            requirements = example_text
     
     # Step 2: Generate prompt and get response from LLM
     prompt = prompt_gen.generate_prompt(description, requirements)
-    response = llm_client.generate_text(prompt)
+    
+    # Use regular generate_text method instead of generate_text_with_tools
+    system_message = """You are an expert Rust developer. Create a complete, working Rust project.
+    Always include at minimum these files: Cargo.toml, src/main.rs, and README.md.
+    For Cargo.toml, include proper dependencies and metadata.
+    Format your response with clear file headers like:
+    
+    [filename: Cargo.toml]
+    <file content>
+    
+    [filename: src/main.rs]
+    <file content>
+    """
+    
+    response = llm_client.generate_text(prompt, system_message=system_message)
     
     # Step 3: Parse response into files
     files = parser.parse_response(response)
+    
+    # Ensure essential files exist
+    if "Cargo.toml" not in files:
+        # Create a basic Cargo.toml if it's missing
+        project_name = description.lower().replace(" ", "_").replace("-", "_")[:20]
+        files["Cargo.toml"] = f"""[package]
+name = "{project_name}"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+"""
+    
+    if "src/main.rs" not in files and "src\\main.rs" not in files:
+        # Create a basic main.rs if it's missing
+        files["src/main.rs"] = """fn main() {
+    println!("Hello, world!");
+}
+"""
+    
     file_paths = parser.write_files(files, project_dir)
     
     status.update({
