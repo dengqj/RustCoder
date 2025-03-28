@@ -28,7 +28,6 @@ Ensure you have the following installed:
 git clone <repository-url>
 cd Project3
 docker-compose up -d
-```
 
 ### Manual Setup
 ```bash
@@ -40,11 +39,11 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 ---
 
-## 🔥 Usage
+### 🔥 Usage
 The API provides the following endpoints:
 
 ### 🎯 Generate a Project
-**Endpoint:** `POST /generate`
+Endpoint: POST /generate
 
 #### 📥 Request Body:
 ```json
@@ -87,8 +86,12 @@ Project3/
 ├── data/                 # Data storage
 ├── docker-compose.yml    # Docker Compose configuration
 ├── Dockerfile            # Docker configuration
+├── output/               # Generated project output
+├── parse_and_save_qna.py # Q&A parsing utility
+├── qdrant_data/          # Vector database storage
 ├── requirements.txt      # Python dependencies
-└── templates/            # API templates
+├── templates/            # API templates
+└── tests/ 
 ```
 
 ---
