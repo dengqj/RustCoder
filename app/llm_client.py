@@ -1,76 +1,63 @@
 import os
 import json
-import requests
 from typing import Dict, List, Optional, Union
+from openai import OpenAI
 
 class LlamaEdgeClient:
     """Client for interacting with LlamaEdge OpenAI-compatible API"""
     
-    def __init__(self):
+    def __init__(self, api_key=None):
+        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+        if not self.api_key:
+            raise ValueError("API key is required")
+            
         # Use environment variables with defaults
         self.base_url = os.getenv("LLAMAEDGE_URL", "http://localhost:8080/v1")
         self.llm_model = os.getenv("LLAMAEDGE_MODEL", "Qwen2.5-Coder-3B-Instruct")
-        self.embed_model = os.getenv("LLAMAEDGE_EMBED_MODEL", "gte-Qwen2-1.5B-instruct")
+        
+        # Initialize OpenAI client with custom base URL
+        self.client = OpenAI(
+            api_key=self.api_key,
+            base_url=self.base_url
+        )
         
     def generate_text(self, 
-                     prompt: str, 
-                     system_message: str = "You are a helpful assistant with expertise in Rust programming.", 
-                     max_tokens: int = 4000,
-                     temperature: float = 0.7) -> str:
-        """Generate text using the LLM"""
+                    prompt: str, 
+                    system_message: str = "You are a helpful assistant with expertise in Rust programming.", 
+                    max_tokens: int = 4000,
+                    temperature: float = 0.7) -> str:
+        """Generate text using the LLM with OpenAI format"""
         
-        url = f"{self.base_url}/chat/completions"
-        
-        # Using chatml format for Qwen2.5 models
-        formatted_prompt = f"<|im_start|>system\n{system_message}<|im_end|>\n<|im_start|>user\n{prompt}<|im_end|>\n<|im_start|>assistant"
-        
-        payload = {
-            "model": self.llm_model,
-            "prompt": formatted_prompt,
-            "max_tokens": max_tokens,
-            "temperature": temperature,
-            "stop": ["<|im_end|>"]
-        }
+        messages = [
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": prompt}
+        ]
         
         try:
-            response = requests.post(url, json=payload)
-            response.raise_for_status()
-            return response.json()["choices"][0]["text"].strip()
-        except requests.exceptions.RequestException as e:
-            print(f"Error calling LLM API: {e}")
-            return ""
-            
+            response = self.client.chat.completions.create(
+                model=self.llm_model,
+                messages=messages,
+                max_tokens=max_tokens,
+                temperature=temperature
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            print(f"Error generating text: {str(e)}")
+            return f"Error: {str(e)}"
+    
     def get_embeddings(self, texts: List[str]) -> List[List[float]]:
         """Get embeddings for a list of texts"""
-        
-        url = f"{self.base_url}/embeddings"
-        
-        payload = {
-            "model": self.embed_model,
-            "input": texts
-        }
-        
         try:
-            response = requests.post(url, json=payload)
-            response.raise_for_status()
-            result = response.json()
-            return [item["embedding"] for item in result["data"]]
-        except requests.exceptions.RequestException as e:
-            print(f"Error getting embeddings: {e}")
-            return []
+            response = self.client.embeddings.create(
+                model="text-embedding-ada-002",  # Default model, may need to adjust based on LlamaEdge capabilities
+                input=texts
+            )
+            return [item.embedding for item in response.data]
+        except Exception as e:
+            print(f"Error getting embeddings: {str(e)}")
+            return [[] for _ in texts]  # Return empty embeddings on error
     
-
     def generate_text_with_tools(self, prompt: str) -> str:
         """Generate text with tool-calling capability"""
-        from app.llm_tools import VectorStoreQueryTool
-
-        query_tool = VectorStoreQueryTool()
-
-        # Use the existing generate_text method instead of trying to access self.model
-        system_message = """You are an expert Rust developer. You can use tools to access information when needed.
-        When creating a project, follow Rust best practices and include proper error handling."""
-        
-        # Call the existing generate_text method
-        response = self.generate_text(prompt, system_message=system_message)
-        
-        return response
+        # Implement tool calling if needed
+        return self.generate_text(prompt)
