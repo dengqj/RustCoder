@@ -79,20 +79,87 @@ Endpoint: POST /generate
 
 ---
 
+## 🔧 MCP (Model-Compiler-Processor) Endpoints
+These endpoints provide direct compilation and error fixing for Rust code:
+
+### 🛠 Compile Rust Code
+Endpoint: POST /mcp/compile
+
+### 📥 Request Body:
+```json
+{
+  "code": "[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    println!(\"Hello, World!\");\n}"
+}
+```
+
+### 📤 Response:
+```json
+{
+  "success": true,
+  "files": ["Cargo.toml", "src/main.rs"],
+  "build_output": "Build successful",
+  "run_output": "Hello, World!"
+}
+```
+### 🩹 Compile and Fix Rust Code
+Endpoint: POST /mcp/compile-and-fix
+
+### 📥 Request Body:
+```json
+{
+  "code": "[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    println!(\"Hello, World!\" // Missing closing parenthesis\n}",
+  "description": "A simple hello world program",
+  "max_attempts": 3
+}
+```
+
+### 📤 Response:
+```json
+{
+  "success": true,
+  "attempts": [...],
+  "final_files": {...},
+  "build_output": "Build successful",
+  "run_output": "Hello, World!"
+}
+```
+
+---
+
 ## 📂 Project Structure
 ```
-Project3/
+Rust_coder_lfx/
 ├── app/                  # Application code
+│   ├── compiler.py       # Rust compilation handling
+│   ├── llm_client.py     # LLM API client
+│   ├── main.py           # FastAPI application
+│   ├── mcp_service.py    # Model-Compiler-Processor service
+│   ├── prompt_generator.py # LLM prompt generation
+│   ├── response_parser.py # Parse LLM responses into files
+│   ├── vector_store.py   # Vector database interface
+│   └── ...
 ├── data/                 # Data storage
+│   ├── error_examples/   # Error examples for vector search
+│   └── project_examples/ # Project examples for vector search
 ├── docker-compose.yml    # Docker Compose configuration
 ├── Dockerfile            # Docker configuration
+├── examples/             # Example scripts for using the API
 ├── output/               # Generated project output
 ├── parse_and_save_qna.py # Q&A parsing utility
 ├── qdrant_data/          # Vector database storage
 ├── requirements.txt      # Python dependencies
-├── templates/            # API templates
-└── tests/ 
+└── templates/            # API templates
 ```
+
+---
+
+
+## 🧠 How It Works
+
+### Vector Search: The system uses Qdrant for storing and searching project examples and error solutions.
+### LLM Integration: Communicates with LlamaEdge API for code generation and error fixing via llm_client.py.
+### Compilation Feedback Loop: Automatically compiles, detects errors, and fixes them using compiler.py.
+### File Parsing: Converts LLM responses into project files with response_parser.py.
 
 ---
 
