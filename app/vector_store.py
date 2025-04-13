@@ -1,4 +1,5 @@
 import os
+import uuid
 from typing import Dict, List, Optional, Any
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
@@ -9,12 +10,15 @@ class QdrantStore:
     def __init__(self, url: Optional[str] = None, 
                  api_key: Optional[str] = None,
                  local_path: Optional[str] = None):
+        self.qdrant_host = os.getenv("QDRANT_HOST", "localhost")
+        self.qdrant_port = int(os.getenv("QDRANT_PORT", "6333"))
+        
         if url and api_key:  # Cloud Qdrant
             self.client = QdrantClient(url=url, api_key=api_key)
         elif local_path:     # Local Qdrant
             self.client = QdrantClient(path=local_path)
         else:                # Default local Qdrant
-            self.client = QdrantClient(host="localhost", port=6333)
+            self.client = QdrantClient(host=self.qdrant_host, port=self.qdrant_port)
             
     def create_collection(self, name: str, vector_size: int = 1536):
         """Create a new collection if it doesn't exist"""
@@ -66,3 +70,32 @@ class QdrantStore:
             collection_name=collection_name,
             points=points
         )
+
+    def add_item(self, collection_name, vector, item):
+        """
+        Add an item to a collection with its vector embedding
+        
+        Args:
+            collection_name: Name of the collection
+            vector: Vector embedding
+            item: Payload dictionary
+        """
+        try:
+            # Add unique ID for this item
+            item_id = str(uuid.uuid4())
+            
+            # Add to collection
+            self.client.upsert(
+                collection_name=collection_name,
+                points=[
+                    models.PointStruct(
+                        id=item_id,
+                        vector=vector,
+                        payload=item
+                    )
+                ]
+            )
+            return True
+        except Exception as e:
+            print(f"Error adding item to collection {collection_name}: {e}")
+            return False
