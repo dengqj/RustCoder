@@ -2,6 +2,10 @@ import os
 import uuid
 import shutil
 from typing import Dict, List, Optional
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 from fastapi import FastAPI, BackgroundTasks, HTTPException
 from fastapi.responses import JSONResponse
@@ -12,11 +16,17 @@ from app.response_parser import ResponseParser
 from app.compiler import RustCompiler
 from app.llm_client import LlamaEdgeClient
 from app.vector_store import QdrantStore
+from app.mcp_service import RustCompilerMCP
 
 app = FastAPI(title="Rust Project Generator API")
 
+# Get API key from environment variable
+api_key = os.getenv("OPENAI_API_KEY")
+if not api_key:
+    raise ValueError("OPENAI_API_KEY environment variable not set")
+
 # Initialize components
-llm_client = LlamaEdgeClient()
+llm_client = LlamaEdgeClient(api_key=api_key)
 prompt_gen = PromptGenerator()
 parser = ResponseParser()
 compiler = RustCompiler()
@@ -25,6 +35,9 @@ compiler = RustCompiler()
 vector_store = QdrantStore()
 vector_store.create_collection("project_examples")
 vector_store.create_collection("error_examples")
+
+# Initialize MCP service with vector store and LLM client
+rust_mcp = RustCompilerMCP(vector_store=vector_store, llm_client=llm_client)
 
 # Project generation request
 class ProjectRequest(BaseModel):
@@ -76,6 +89,28 @@ async def get_project_status(project_id: str):
         status = json.load(f)
         
     return ProjectResponse(**status)
+
+@app.post("/mcp/compile")
+async def mcp_compile_rust(request: dict):
+    """MCP endpoint to compile Rust code"""
+    if "code" not in request:
+        raise HTTPException(status_code=400, detail="Missing 'code' field")
+    
+    return rust_mcp.compile_rust_code(request["code"])
+
+@app.post("/mcp/compile-and-fix")
+async def mcp_compile_and_fix_rust(request: dict):
+    """MCP endpoint to compile and fix Rust code"""
+    if "code" not in request or "description" not in request:
+        raise HTTPException(status_code=400, detail="Missing required fields")
+    
+    max_attempts = request.get("max_attempts", 3)
+    
+    return rust_mcp.compile_and_fix_rust_code(
+        request["code"],
+        request["description"],
+        max_attempts=max_attempts
+    )
 
 async def handle_project_generation(
     project_id: str, 
