@@ -265,8 +265,8 @@ Please provide the fixed code for all affected files.
                 embeddings = self.llm_client.get_embeddings([description])[0]
             except Exception as e:
                 print(f"Error getting embeddings: {e}")
-                # Use a dummy embedding of correct size (1536 for OpenAI)
-                embeddings = [0.0] * 1536  
+                # Use a dummy embedding of correct size
+                embeddings = [0.0] * self.vector_store.embedding_size  # Use configurable size
             
             # Store in vector store
             self.vector_store.add_item(
