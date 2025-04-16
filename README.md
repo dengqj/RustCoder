@@ -81,11 +81,9 @@ The API provides the following endpoints:
 #### Example:
 
 ```bash
-curl http://localhost:8000/generate \
-  -d '{
-  "description": "A command-line calculator in Rust",
-  "requirements": "Should support addition, subtraction, multiplication, and division"
-}'
+  curl -X POST http://localhost:8000/generate \
+  -H "Content-Type: application/json" \
+  -d '{"description": "A command-line calculator in Rust", "requirements": "Should support addition, subtraction, multiplication, and division"}'
 ```
 
 ### 📌 Check Project Status
@@ -103,6 +101,12 @@ curl http://localhost:8000/generate \
   "build_output": "...",
   "run_output": "..."
 }
+```
+
+#### Example:
+
+```bash
+curl http://localhost:8000/project/123e4567-e89b-12d3-a456-426614174000
 ```
 
 ---
