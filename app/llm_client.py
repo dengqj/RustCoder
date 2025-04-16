@@ -7,13 +7,14 @@ class LlamaEdgeClient:
     """Client for interacting with LlamaEdge OpenAI-compatible API"""
     
     def __init__(self, api_key=None):
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+        self.api_key = api_key or os.getenv("LLM_API_KEY")
         if not self.api_key:
             raise ValueError("API key is required")
             
         # Use environment variables with defaults
-        self.base_url = os.getenv("LLAMAEDGE_URL", "http://localhost:8080/v1")
-        self.llm_model = os.getenv("LLAMAEDGE_MODEL", "Qwen2.5-Coder-3B-Instruct")
+        self.base_url = os.getenv("LLM_API_BASE", "http://localhost:8080/v1")
+        self.llm_model = os.getenv("LLM_MODEL", "Qwen2.5-Coder-3B-Instruct")
+        self.embed_model = os.getenv("LLM_EMBED_MODEL", "gte-Qwen2-1.5B-instruct")
         
         # Initialize OpenAI client with custom base URL
         self.client = OpenAI(
