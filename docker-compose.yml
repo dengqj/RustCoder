@@ -8,6 +8,7 @@ services:
       - ./qdrant_data:/qdrant/storage
     environment:
       - QDRANT__SERVICE__GRPC_PORT=6334
+      - QDRANT_API_KEY=${QDRANT_API_KEY:-qdrant_placeholder_key}
 
   app:
     build:
@@ -19,14 +20,13 @@ services:
     environment:
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6333
-      - LLAMAEDGE_URL=http://host.docker.internal:8080/v1
-      - LLAMAEDGE_MODEL=Qwen2.5-Coder-3B-Instruct
-      - LLAMAEDGE_EMBED_MODEL=gte-Qwen2-1.5B-instruct
+      - QDRANT_API_KEY=${QDRANT_API_KEY:-qdrant_placeholder_key}
+      - LLM_API_BASE=http://host.docker.internal:8080/v1
+      - LLM_MODEL=Qwen2.5-Coder-3B-Instruct
+      - LLM_EMBED_MODEL=gte-Qwen2-1.5B-instruct
+      - LLM_API_KEY=${LLM_API_KEY:-your_llm_api_key_here}
       - CARGO_PATH=/root/.cargo/bin/cargo
       - RUST_COMPILER_PATH=/root/.cargo/bin/rustc
     volumes:
       - ./output:/app/output
       - ./data:/app/data
-      - ./templates:/app/templates
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
