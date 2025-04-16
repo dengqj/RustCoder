@@ -25,6 +25,7 @@ services:
       - LLM_MODEL=Qwen2.5-Coder-3B-Instruct
       - LLM_EMBED_MODEL=gte-Qwen2-1.5B-instruct
       - LLM_API_KEY=${LLM_API_KEY:-your_llm_api_key_here}
+      - LLM_EMBED_SIZE=${LLM_EMBED_SIZE:-1536}
       - CARGO_PATH=/root/.cargo/bin/cargo
       - RUST_COMPILER_PATH=/root/.cargo/bin/rustc
     volumes:
