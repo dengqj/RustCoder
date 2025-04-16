@@ -5,6 +5,7 @@ An API service that generates fully functional Rust projects from natural langua
 ---
 
 ## ✨ Features
+
 - **Generate Rust Projects** 📦 - Transform text descriptions into complete Rust projects.
 - **Automatic Compilation & Fixing** 🛠 - Detect and resolve errors during compilation.
 - **Vector Search** 🔍 - Search for similar projects and errors.
@@ -14,7 +15,9 @@ An API service that generates fully functional Rust projects from natural langua
 ---
 
 ## 📋 Prerequisites
+
 Ensure you have the following installed:
+
 - **Python 3.8+** 🐍
 - **Docker & Docker Compose** 🐳
 - **Rust Compiler** 🦀 (for local testing)
@@ -24,28 +27,40 @@ Ensure you have the following installed:
 ## 🚀 Installation
 
 ### Using Docker (Recommended)
+
 ```bash
 git clone <repository-url>
-cd Project3
+cd Rust_coder_lfx
 docker-compose up -d
+```
+
+To stop it
+
+```bash
+docker-compose stop
+```
 
 ### Manual Setup
+
 ```bash
 git clone <repository-url>
-cd Project3
+cd Rust_coder_lfx
 pip install -r requirements.txt
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 ---
 
-### 🔥 Usage
+## 🔥 Usage
+
 The API provides the following endpoints:
 
 ### 🎯 Generate a Project
-Endpoint: POST /generate
+
+**Endpoint:** `POST /generate`
 
 #### 📥 Request Body:
+
 ```json
 {
   "description": "A command-line calculator in Rust",
@@ -54,6 +69,7 @@ Endpoint: POST /generate
 ```
 
 #### 📤 Response:
+
 ```json
 {
   "project_id": "123e4567-e89b-12d3-a456-426614174000",
@@ -62,10 +78,20 @@ Endpoint: POST /generate
 }
 ```
 
+#### Example:
+
+```bash
+  curl -X POST http://localhost:8000/generate \
+  -H "Content-Type: application/json" \
+  -d '{"description": "A command-line calculator in Rust", "requirements": "Should support addition, subtraction, multiplication, and division"}'
+```
+
 ### 📌 Check Project Status
+
 **Endpoint:** `GET /project/{project_id}`
 
 #### 📤 Response:
+
 ```json
 {
   "project_id": "123e4567-e89b-12d3-a456-426614174000",
@@ -77,22 +103,32 @@ Endpoint: POST /generate
 }
 ```
 
+#### Example:
+
+```bash
+curl http://localhost:8000/project/123e4567-e89b-12d3-a456-426614174000
+```
+
 ---
 
 ## 🔧 MCP (Model-Compiler-Processor) Endpoints
+
 These endpoints provide direct compilation and error fixing for Rust code:
 
 ### 🛠 Compile Rust Code
-Endpoint: POST /mcp/compile
 
-### 📥 Request Body:
+**Endpoint:** `POST /mcp/compile`
+
+#### 📥 Request Body:
+
 ```json
 {
   "code": "[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    println!(\"Hello, World!\");\n}"
 }
 ```
 
-### 📤 Response:
+#### 📤 Response:
+
 ```json
 {
   "success": true,
@@ -101,10 +137,13 @@ Endpoint: POST /mcp/compile
   "run_output": "Hello, World!"
 }
 ```
+
 ### 🩹 Compile and Fix Rust Code
-Endpoint: POST /mcp/compile-and-fix
+
+**Endpoint:** `POST /mcp/compile-and-fix`
 
 ### 📥 Request Body:
+
 ```json
 {
   "code": "[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    println!(\"Hello, World!\" // Missing closing parenthesis\n}",
@@ -114,6 +153,7 @@ Endpoint: POST /mcp/compile-and-fix
 ```
 
 ### 📤 Response:
+
 ```json
 {
   "success": true,
@@ -127,6 +167,7 @@ Endpoint: POST /mcp/compile-and-fix
 ---
 
 ## 📂 Project Structure
+
 ```
 Rust_coder_lfx/
 ├── app/                  # Application code
