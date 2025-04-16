@@ -21,9 +21,9 @@ from app.mcp_service import RustCompilerMCP
 app = FastAPI(title="Rust Project Generator API")
 
 # Get API key from environment variable
-api_key = os.getenv("OPENAI_API_KEY")
+api_key = os.getenv("LLM_API_KEY")
 if not api_key:
-    raise ValueError("OPENAI_API_KEY environment variable not set")
+    raise ValueError("LLM_API_KEY environment variable not set")
 
 # Initialize components
 llm_client = LlamaEdgeClient(api_key=api_key)
@@ -35,6 +35,15 @@ compiler = RustCompiler()
 vector_store = QdrantStore()
 vector_store.create_collection("project_examples")
 vector_store.create_collection("error_examples")
+
+# After initializing vector store
+from app.load_data import load_project_examples, load_error_examples
+
+# Check if collections are empty and load data if needed
+if vector_store.count("project_examples") == 0:
+    load_project_examples()
+if vector_store.count("error_examples") == 0:
+    load_error_examples()
 
 # Initialize MCP service with vector store and LLM client
 rust_mcp = RustCompilerMCP(vector_store=vector_store, llm_client=llm_client)
