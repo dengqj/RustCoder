@@ -1,4 +1,3 @@
-# app/load_data.py
 import json
 import os
 from glob import glob
