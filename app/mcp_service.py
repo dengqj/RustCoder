@@ -33,11 +33,11 @@ class RustCompilerMCP:
             import os
             from dotenv import load_dotenv
             load_dotenv()
-            api_key = os.getenv("OPENAI_API_KEY")
+            api_key = os.getenv("LLM_API_KEY")
             if api_key:
                 self.llm_client = LlamaEdgeClient(api_key=api_key)
             else:
-                raise ValueError("OPENAI_API_KEY environment variable not set")
+                raise ValueError("LLM_API_KEY environment variable not set")
         
     def compile_rust_code(self, code_content: str) -> Dict:
         """
