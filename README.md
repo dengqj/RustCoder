@@ -18,23 +18,43 @@ An API service that generates fully functional Rust projects from natural langua
 
 Ensure you have the following installed:
 
-- **Python 3.8+** 🐍
 - **Docker & Docker Compose** 🐳
-- **Rust Compiler** 🦀 (for local testing)
+
+Or, if you want to run the services directly on your own computer:
+
+- **Python 3.8+** 🐍
+- **Rust Compiler and cargo tools** 🦀 
 
 ---
 
-## 🚀 Installation
-
-### Using Docker (Recommended)
+## 📦 Install
 
 ```bash
 git clone <repository-url>
 cd Rust_coder_lfx
+```
+
+## 🚀 Configure and run
+
+### Using Docker (Recommended)
+
+Edit the `docker-compose.yml` file and specify your own LLM API server. The default config assumes that you have a [Gaia node like this](https://github.com/GaiaNet-AI/node-configs/tree/main/qwen-2.5-coder-3b-instruct-gte) running on `localhost` port `8080`. The alternative configuration shown below uses a [public Gaia node for coding assistance](https://docs.gaianet.ai/nodes#coding-assistant-agents).
+
+```
+- LLM_API_BASE=https://coder.gaia.domains/v1
+- LLM_MODEL=Qwen2.5-Coder-32B-Instruct-Q5_K_M
+- LLM_EMBED_MODEL=nomic-embed
+- LLM_API_KEY=<YOUR API KEY FROM GAIANET.AI>
+- LLM_EMBED_SIZE=768
+```
+
+Start the services.
+
+```bash
 docker-compose up -d
 ```
 
-To stop it
+Stop the services.
 
 ```bash
 docker-compose stop
@@ -42,9 +62,23 @@ docker-compose stop
 
 ### Manual Setup
 
+By default, you will need a [Qdrant server](https://qdrant.tech/documentation/quickstart/) running on `localhost` port `6333`. You also need a [local Gaia node](https://github.com/GaiaNet-AI/node-configs/tree/main/qwen-2.5-coder-3b-instruct-gte). Set the following environment variables in your terminal to point to the Qdrant and Gaia instances, as well as your Rust compiler tools.
+
+```
+QDRANT_HOST
+QDRANT_PORT
+LLM_API_BASE
+LLM_MODEL
+LLM_EMBED_MODEL
+LLM_API_KEY
+LLM_EMBED_SIZE
+CARGO_PATH
+RUST_COMPILER_PATH
+```
+
+Start the services.
+
 ```bash
-git clone <repository-url>
-cd Rust_coder_lfx
 pip install -r requirements.txt
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
@@ -58,6 +92,14 @@ The API provides the following endpoints:
 ### 🎯 Generate a Project
 
 **Endpoint:** `POST /generate`
+
+**Example:**
+
+```bash
+  curl -X POST http://localhost:8000/generate \
+  -H "Content-Type: application/json" \
+  -d '{"description": "A command-line calculator in Rust", "requirements": "Should support addition, subtraction, multiplication, and division"}'
+```
 
 #### 📥 Request Body:
 
@@ -78,17 +120,15 @@ The API provides the following endpoints:
 }
 ```
 
-#### Example:
-
-```bash
-  curl -X POST http://localhost:8000/generate \
-  -H "Content-Type: application/json" \
-  -d '{"description": "A command-line calculator in Rust", "requirements": "Should support addition, subtraction, multiplication, and division"}'
-```
-
 ### 📌 Check Project Status
 
 **Endpoint:** `GET /project/{project_id}`
+
+**Example:**
+
+```bash
+curl http://localhost:8000/project/123e4567-e89b-12d3-a456-426614174000
+```
 
 #### 📤 Response:
 
@@ -101,12 +141,6 @@ The API provides the following endpoints:
   "build_output": "...",
   "run_output": "..."
 }
-```
-
-#### Example:
-
-```bash
-curl http://localhost:8000/project/123e4567-e89b-12d3-a456-426614174000
 ```
 
 ---
@@ -197,10 +231,13 @@ Rust_coder_lfx/
 
 ## 🧠 How It Works
 
-### Vector Search: The system uses Qdrant for storing and searching project examples and error solutions.
-### LLM Integration: Communicates with LlamaEdge API for code generation and error fixing via llm_client.py.
-### Compilation Feedback Loop: Automatically compiles, detects errors, and fixes them using compiler.py.
-### File Parsing: Converts LLM responses into project files with response_parser.py.
+Vector Search: The system uses Qdrant for storing and searching project examples and error solutions.
+
+LLM Integration: Communicates with LlamaEdge API for code generation and error fixing via `llm_client.py`.
+
+Compilation Feedback Loop: Automatically compiles, detects errors, and fixes them using `compiler.py`.
+
+File Parsing: Converts LLM responses into project files with `response_parser.py`.
 
 ---
 
