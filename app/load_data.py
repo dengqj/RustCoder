@@ -1,5 +1,7 @@
+# app/load_data.py
 import json
 import os
+import uuid
 from glob import glob
 from app.llm_client import LlamaEdgeClient
 from app.vector_store import QdrantStore
@@ -21,11 +23,13 @@ def load_project_examples():
         # Get embedding for query
         embedding = llm_client.get_embeddings([example["query"]])[0]
         
-        # Store in vector DB
+        # Store in vector DB with proper UUID
+        point_id = str(uuid.uuid4())  # Generate proper UUID
+        
         vector_store.upsert("project_examples", 
-                           [{"id": os.path.basename(file_path), 
-                             "vector": embedding, 
-                             "payload": example}])
+                          [{"id": point_id,  # Use UUID instead of filename
+                            "vector": embedding, 
+                            "payload": example}])
         
         print(f"Loaded project example: {example['query']}")
 
