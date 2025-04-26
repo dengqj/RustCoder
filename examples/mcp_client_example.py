@@ -1,62 +1,12 @@
-import requests
+from project3.mcp.client import MCPClient
 import json
-from typing import Dict, Optional
 
-
-class MCPClient:
-    """Client for the Rust Compiler MCP service"""
+def main():
+    # Connect to MCP proxy server
+    client = MCPClient("http://localhost:3000")
     
-    def __init__(self, base_url: str = "http://localhost:8000"):
-        self.base_url = base_url
-    
-    def compile_rust_code(self, code_content: str) -> Dict:
-        """
-        Call the MCP service to compile Rust code
-        
-        Args:
-            code_content: String containing Rust code with file markers
-            
-        Returns:
-            Dict with compilation status, output, and error messages
-        """
-        response = requests.post(
-            f"{self.base_url}/mcp/compile",
-            json={"code": code_content}
-        )
-        return response.json()
-    
-    def compile_and_fix_rust_code(
-        self, 
-        code_content: str, 
-        description: str,
-        max_attempts: int = 3
-    ) -> Dict:
-        """
-        Call the MCP service to compile and fix Rust code
-        
-        Args:
-            code_content: String containing Rust code with file markers
-            description: Project description for context
-            max_attempts: Maximum attempts to fix compilation errors
-            
-        Returns:
-            Dict with compilation status, output, fixes applied, and final code
-        """
-        response = requests.post(
-            f"{self.base_url}/mcp/compile-and-fix",
-            json={
-                "code": code_content,
-                "description": description,
-                "max_attempts": max_attempts
-            }
-        )
-        return response.json()
-
-
-# Example usage
-if __name__ == "__main__":
-    # Initialize MCP client
-    mcp_client = MCPClient()
+    # Example 1: Simple compilation
+    print("\n=== Testing MCP Compile ===")
     
     # Example Rust code with multiple files
     rust_code = """
@@ -74,11 +24,11 @@ if __name__ == "__main__":
     }
     """
     
-    # Example 1: Simple compilation
-    result = mcp_client.compile_rust_code(rust_code)
+    result = client.call("rust-compiler", "compile", {"code": rust_code})
     print("Compilation result:", json.dumps(result, indent=2))
     
     # Example 2: Code with error that needs fixing
+    print("\n=== Testing MCP Compile and Fix ===")
     rust_code_with_error = """
     [filename: Cargo.toml]
     [package]
@@ -94,8 +44,21 @@ if __name__ == "__main__":
     }
     """
     
-    result = mcp_client.compile_and_fix_rust_code(
-        rust_code_with_error,
-        "A simple Hello World program"
-    )
+    result = client.call("rust-compiler", "compileAndFix", {
+        "code": rust_code_with_error,
+        "description": "A simple Hello World program",
+        "max_attempts": 3
+    })
     print("Compilation and fix result:", json.dumps(result, indent=2))
+    
+    # Example 3: Vector search
+    print("\n=== Testing MCP Vector Search ===")
+    result = client.call("rust-compiler", "vectorSearch", {
+        "query": "how to implement a web server in Rust",
+        "collection": "project_examples",
+        "limit": 3
+    })
+    print("Vector search result:", json.dumps(result, indent=2))
+
+if __name__ == "__main__":
+    main()
