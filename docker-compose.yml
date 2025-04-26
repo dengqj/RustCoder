@@ -9,6 +9,8 @@ services:
       - LLM_API_KEY=${LLM_API_KEY}
       - LLM_API_BASE=${LLM_API_BASE:-http://localhost:8080/v1}
       - LLM_MODEL=${LLM_MODEL:-Qwen2.5-Coder-3B-Instruct}
+      - LLM_EMBED_MODEL=${LLM_EMBED_MODEL:-gte-Qwen2-1.5B-instruct}
+      - LLM_EMBED_SIZE=${LLM_EMBED_SIZE:-1536}
     depends_on:
       - qdrant
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
@@ -19,6 +21,8 @@ services:
       - LLM_API_KEY=${LLM_API_KEY}
       - LLM_API_BASE=${LLM_API_BASE:-http://localhost:8080/v1}
       - LLM_MODEL=${LLM_MODEL:-Qwen2.5-Coder-3B-Instruct}
+      - LLM_EMBED_MODEL=${LLM_EMBED_MODEL:-gte-Qwen2-1.5B-instruct}
+      - LLM_EMBED_SIZE=${LLM_EMBED_SIZE:-1536}
     depends_on:
       - qdrant
     command: python -m app.mcp_server
