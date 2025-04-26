@@ -1,33 +1,40 @@
 version: '3'
+
 services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - LLM_API_KEY=${LLM_API_KEY}
+      - LLM_API_BASE=${LLM_API_BASE:-http://localhost:8080/v1}
+      - LLM_MODEL=${LLM_MODEL:-Qwen2.5-Coder-3B-Instruct}
+    depends_on:
+      - qdrant
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  mcp-server:
+    build: .
+    environment:
+      - LLM_API_KEY=${LLM_API_KEY}
+      - LLM_API_BASE=${LLM_API_BASE:-http://localhost:8080/v1}
+      - LLM_MODEL=${LLM_MODEL:-Qwen2.5-Coder-3B-Instruct}
+    depends_on:
+      - qdrant
+    command: python -m app.mcp_server
+    
+  mcp-proxy:
+    image: sparfenyuk/mcp-proxy:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./mcp-proxy-config.json:/app/mcp-proxy-config.json
+    depends_on:
+      - mcp-server
+      
   qdrant:
     image: qdrant/qdrant
     ports:
       - "6333:6333"
     volumes:
       - ./qdrant_data:/qdrant/storage
-    environment:
-      - QDRANT__SERVICE__GRPC_PORT=6334
-      - QDRANT_API_KEY=${QDRANT_API_KEY:-qdrant_placeholder_key}
-
-  app:
-    build:
-      context: .
-    ports:
-      - "8000:8000"
-    depends_on:
-      - qdrant
-    environment:
-      - QDRANT_HOST=qdrant
-      - QDRANT_PORT=6333
-      - QDRANT_API_KEY=${QDRANT_API_KEY:-qdrant_placeholder_key}
-      - LLM_API_BASE=http://host.docker.internal:8080/v1
-      - LLM_MODEL=Qwen2.5-Coder-3B-Instruct
-      - LLM_EMBED_MODEL=gte-Qwen2-1.5B-instruct
-      - LLM_API_KEY=${LLM_API_KEY:-your_llm_api_key_here}
-      - LLM_EMBED_SIZE=${LLM_EMBED_SIZE:-1536}
-      - CARGO_PATH=/root/.cargo/bin/cargo
-      - RUST_COMPILER_PATH=/root/.cargo/bin/rustc
-    volumes:
-      - ./output:/app/output
-      - ./data:/app/data
