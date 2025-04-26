@@ -22,6 +22,9 @@ class LlamaEdgeClient:
             base_url=self.base_url
         )
         
+        # Set embedding size for fallback pseudo-embeddings
+        self.embedding_size = 128
+        
     def generate_text(self, 
                     prompt: str, 
                     system_message: str = "You are a helpful assistant with expertise in Rust programming.", 
@@ -50,13 +53,30 @@ class LlamaEdgeClient:
         """Get embeddings for a list of texts"""
         try:
             response = self.client.embeddings.create(
-                model="text-embedding-ada-002",  # Default model, may need to adjust based on LlamaEdge capabilities
+                model=self.llm_embed_model,
                 input=texts
             )
             return [item.embedding for item in response.data]
         except Exception as e:
-            print(f"Error getting embeddings: {str(e)}")
-            return [[] for _ in texts]  # Return empty embeddings on error
+            print(f"Error getting embeddings from API: {str(e)}")
+            print("Using fallback hash-based pseudo-embeddings")
+            
+            # Create pseudo-embeddings using hash function as fallback
+            # This is just for testing purposes - not suitable for production!
+            def text_to_pseudo_embedding(text: str) -> List[float]:
+                import hashlib
+                # Create a fixed size embedding by hashing parts of the text
+                result = []
+                text = text.lower()
+                for i in range(self.embedding_size):
+                    # Hash different substrings of the text
+                    h = hashlib.md5(f"{text}_{i}".encode()).digest()
+                    # Convert 16 bytes to a float between -1 and 1
+                    val = (int.from_bytes(h[:4], byteorder='big') / 2**32) * 2 - 1
+                    result.append(val)
+                return result
+                
+            return [text_to_pseudo_embedding(text) for text in texts]
     
     def generate_text_with_tools(self, prompt: str) -> str:
         """Generate text with tool-calling capability"""
