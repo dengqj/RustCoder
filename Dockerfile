@@ -1,22 +1,32 @@
-# Start with Python base image
+# Base image with Python and Rust
 FROM python:3.10-slim
 
-# Install Rust and Cargo
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    curl \
-    && rm -rf /var/lib/apt/lists/* \
-    && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
-    && echo 'source $HOME/.cargo/env' >> $HOME/.bashrc
+# Install Rust toolchain
+RUN apt-get update && apt-get install -y curl build-essential && \
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
+    . $HOME/.cargo/env
 
 # Add cargo to PATH
 ENV PATH="/root/.cargo/bin:${PATH}"
 
+# Set working directory
 WORKDIR /app
 
+# Copy requirements and install dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Install MCP packages explicitly
+RUN pip install mcp-python mcp-proxy
+
+# Copy application code
 COPY . .
 
-CMD ["python", "-m", "app.main"]
+# Create necessary directories
+RUN mkdir -p output
+
+# Expose port for FastAPI
+EXPOSE 8000
+
+# Add entry point for MCP server
+CMD ["python", "-m", "app.mcp_server"]
