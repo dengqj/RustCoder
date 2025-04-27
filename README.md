@@ -83,6 +83,39 @@ pip install -r requirements.txt
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
+### Using the MCP Server with cmcp Client
+
+The MCP server can be accessed using the [cmcp command-line client](https://github.com/RussellLuo/cmcp). Follow these steps:
+
+1. Install cmcp:
+   ```bash
+   pip install cmcp
+   ```
+
+2. Connect to the MCP server and call methods:
+  ```# Compile Rust code
+  echo '{
+    "code": "[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    println!(\"Hello, World!\");\n}"
+  }' | cmcp call http://localhost:3000 rust-compiler compile
+
+  # Compile and fix code
+  echo '{
+    "code": "[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    println!(\"Hello, World!\" // Missing closing parenthesis\n}",
+    "description": "A simple hello world program", 
+    "max_attempts": 3
+  }' | cmcp call http://localhost:3000 rust-compiler compileAndFix
+
+  # Vector search
+  echo '{
+    "query": "how to implement a web server in Rust",
+    "collection": "project_examples",
+    "limit": 3
+  }' | cmcp call http://localhost:3000 rust-compiler vectorSearch
+  ```
+3. Available MCP methods:
+  - rust-compiler.compile: Compiles Rust code
+  - rust-compiler.compileAndFix: Automatically fixes and compiles Rust code
+  - rust-compiler.vectorSearch: Searches vector database for similar examples
 ---
 
 ## 🔥 Usage
