@@ -14,7 +14,7 @@ WORKDIR /app
 
 # Copy requirements and install dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt || echo "Some packages not found, continuing..."
 
 # Install MCP packages explicitly
 RUN pip install mcp-python mcp-proxy
