@@ -14,7 +14,7 @@ class LlamaEdgeClient:
         # Use environment variables with defaults
         self.base_url = os.getenv("LLM_API_BASE", "http://localhost:8080/v1")
         self.llm_model = os.getenv("LLM_MODEL", "Qwen2.5-Coder-3B-Instruct")
-        self.embed_model = os.getenv("LLM_EMBED_MODEL", "gte-Qwen2-1.5B-instruct")
+        self.llm_embed_model = os.getenv("LLM_EMBED_MODEL", "gte-Qwen2-1.5B-instruct")  # Fixed variable name
         
         # Initialize OpenAI client with custom base URL
         self.client = OpenAI(
@@ -23,7 +23,7 @@ class LlamaEdgeClient:
         )
         
         # Set embedding size for fallback pseudo-embeddings
-        self.embedding_size = 128
+        self.embedding_size = int(os.getenv("LLM_EMBED_SIZE", "1536"))  # Use configured size
         
     def generate_text(self, 
                     prompt: str, 
