@@ -3,6 +3,9 @@ import json
 import sys
 from typing import Dict, Any, Optional, List
 
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 # Update these imports with the correct paths
 from mcp.server import Server
 from mcp.server.models import Response, Status

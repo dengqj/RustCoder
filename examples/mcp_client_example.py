@@ -1,4 +1,4 @@
-from project3.mcp.client import MCPClient
+from mcp.client import MCPClient
 import json
 
 def main():
