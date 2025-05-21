@@ -12,13 +12,14 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 # Set working directory
 WORKDIR /app
 
-# Copy requirements and install dependencies
+# Install pip dependencies first for better caching
 COPY requirements.txt .
-# Remove the "|| echo" part to fail if packages aren't installed
-RUN pip install --no-cache-dir -r requirements.txt
 
-# Install MCP packages explicitly
-RUN pip install mcp-python mcp-proxy fastapi uvicorn
+# Install packages step by step to debug any issues
+RUN pip install --no-cache-dir -U pip && \
+    pip install --no-cache-dir openai && \
+    pip install --no-cache-dir cmcp mcp-python mcp-proxy && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .

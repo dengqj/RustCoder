@@ -44,16 +44,29 @@ jobs:
           echo "Checking Docker container status..."
           docker ps
           
-          # Check if API container exists before getting logs
-          if docker ps | grep -q api; then
-            echo "API container is running, checking logs:"
-            docker logs $(docker ps -q --filter name=api)
-          else
+          # Check if all containers are running
+          if ! docker ps | grep -q api; then
             echo "ERROR: API container is not running!"
-            echo "Checking docker-compose logs for errors:"
-            docker compose logs
+            echo "Building container logs:"
+            docker-compose logs --tail=100 api
             exit 1
           fi
+          
+          if ! docker ps | grep -q mcp-server; then
+            echo "ERROR: MCP server container is not running!"
+            docker-compose logs --tail=100 mcp-server
+            exit 1
+          fi
+          
+          if ! docker ps | grep -q mcp-proxy; then
+            echo "ERROR: MCP proxy container is not running!"
+            docker-compose logs --tail=100 mcp-proxy
+            exit 1
+          fi
+          
+          echo "All required containers are running."
+          echo "API container logs:"
+          docker logs $(docker ps -q --filter name=api)
           
           echo "Waiting 30 more seconds for services to stabilize..."
           sleep 30

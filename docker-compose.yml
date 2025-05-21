@@ -7,10 +7,10 @@ services:
       - "8000:8000"
     environment:
       - LLM_API_KEY=${LLM_API_KEY}
-      - LLM_API_BASE=${LLM_API_BASE:-http://localhost:8080/v1}
-      - LLM_MODEL=${LLM_MODEL:-Qwen2.5-Coder-3B-Instruct}
-      - LLM_EMBED_MODEL=${LLM_EMBED_MODEL:-gte-Qwen2-1.5B-instruct}
-      - LLM_EMBED_SIZE=${LLM_EMBED_SIZE:-1536}
+      - LLM_API_BASE=${LLM_API_BASE:-https://coder.gaia.domains/v1}
+      - LLM_MODEL=${LLM_MODEL:-Qwen2.5-Coder-32B-Instruct-Q5_K_M}
+      - LLM_EMBED_MODEL=${LLM_EMBED_MODEL:-nomic-embed}
+      - LLM_EMBED_SIZE=${LLM_EMBED_SIZE:-768}
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6333
     depends_on:
@@ -20,10 +20,10 @@ services:
     build: .
     environment:
       - LLM_API_KEY=${LLM_API_KEY}
-      - LLM_API_BASE=${LLM_API_BASE:-http://localhost:8080/v1}
-      - LLM_MODEL=${LLM_MODEL:-Qwen2.5-Coder-3B-Instruct}
-      - LLM_EMBED_MODEL=${LLM_EMBED_MODEL:-gte-Qwen2-1.5B-instruct}
-      - LLM_EMBED_SIZE=${LLM_EMBED_SIZE:-1536}
+      - LLM_API_BASE=${LLM_API_BASE:-https://coder.gaia.domains/v1}
+      - LLM_MODEL=${LLM_MODEL:-Qwen2.5-Coder-32B-Instruct-Q5_K_M}
+      - LLM_EMBED_MODEL=${LLM_EMBED_MODEL:-nomic-embed}
+      - LLM_EMBED_SIZE=${LLM_EMBED_SIZE:-768}
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6333
     depends_on:
