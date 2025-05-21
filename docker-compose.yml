@@ -39,7 +39,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
-    command: python -m mcp.proxy http://mcp-server:3001/sse --port 3000 --host 0.0.0.0 --allow-origin="*"
+    command: mcp-proxy http://mcp-server:3001/sse --port 3000 --host 0.0.0.0 --allow-origin="*"
     depends_on:
       - mcp-server
       
