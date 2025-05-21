@@ -3,7 +3,8 @@ import json
 import sys
 from typing import Dict, Any, Optional, List
 
-from cmcp.server import Server, Response, Status, MethodCall
+# Update this import
+from mcp.server import Server, Response, Status, MethodCall
 from mcp.runner import MCPRunner
 
 from app.compiler import RustCompiler
