@@ -50,7 +50,14 @@ class RustMCPServer:
     
     def run(self, host="0.0.0.0", port=3001):
         """Run the MCP server"""
-        self.mcp.run(host=host, port=port)
+        # The FastMCP.run() method doesn't accept 'host' parameter
+        # Set the server host and port using environment variables instead
+        os.environ["MCP_HOST"] = host
+        os.environ["MCP_PORT"] = str(port)
+        
+        print(f"Starting MCP server on {host}:{port}")
+        # Call run() with the correct parameters - transport is http by default
+        self.mcp.run(port=port)
 
 # For direct invocation
 mcp = FastMCP("Rust Compiler")
