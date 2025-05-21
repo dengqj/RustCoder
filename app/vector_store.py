@@ -9,9 +9,11 @@ class QdrantStore:
     
     def __init__(self, url: Optional[str] = None, 
                  api_key: Optional[str] = None,
-                 local_path: Optional[str] = None):
+                 local_path: Optional[str] = None,
+                 embedding_size: int = 1536):
         self.qdrant_host = os.getenv("QDRANT_HOST", "localhost")
         self.qdrant_port = int(os.getenv("QDRANT_PORT", "6333"))
+        self.embedding_size = embedding_size
         
         if url and api_key:  # Cloud Qdrant
             self.client = QdrantClient(url=url, api_key=api_key)
@@ -20,8 +22,11 @@ class QdrantStore:
         else:                # Default local Qdrant
             self.client = QdrantClient(host=self.qdrant_host, port=self.qdrant_port)
             
-    def create_collection(self, name: str, vector_size: int = 1536):
+    def create_collection(self, name: str, vector_size: Optional[int] = None):
         """Create a new collection if it doesn't exist"""
+        if vector_size is None:
+            vector_size = self.embedding_size
+            
         collections = self.client.get_collections().collections
         collection_names = [c.name for c in collections]
         
@@ -99,3 +104,12 @@ class QdrantStore:
         except Exception as e:
             print(f"Error adding item to collection {collection_name}: {e}")
             return False
+
+    def count(self, collection_name: str) -> int:
+        """Get the number of items in a collection"""
+        try:
+            collection_info = self.client.get_collection(collection_name=collection_name)
+            return collection_info.vectors_count
+        except Exception as e:
+            print(f"Error getting count for collection {collection_name}: {e}")
+            return 0
