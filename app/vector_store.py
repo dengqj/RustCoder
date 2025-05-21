@@ -28,20 +28,28 @@ class QdrantStore:
         if vector_size is None:
             vector_size = self.embedding_size
             
-        collections = self.client.get_collections().collections
-        collection_names = [c.name for c in collections]
-        
-        if name not in collection_names:
-            self.client.create_collection(
-                collection_name=name,
-                vectors_config=models.VectorParams(
-                    size=vector_size,
-                    distance=models.Distance.COSINE
+        try:
+            collections = self.client.get_collections().collections
+            collection_names = [c.name for c in collections]
+            
+            if name not in collection_names:
+                self.client.create_collection(
+                    collection_name=name,
+                    vectors_config=models.VectorParams(
+                        size=vector_size,
+                        distance=models.Distance.COSINE
+                    )
                 )
-            )
-            print(f"Created collection: {name}")
-        else:
-            print(f"Collection {name} already exists")
+                print(f"Created collection: {name}")
+            else:
+                print(f"Collection {name} already exists")
+        except Exception as e:
+            # Check if error is about collection already existing
+            if "already exists" in str(e):
+                print(f"Collection {name} already exists (caught exception)")
+            else:
+                # Re-raise if it's a different error
+                raise
             
     def insert_documents(self, collection_name: str, embeddings: List[List[float]], 
                         metadata: List[Dict[str, Any]]):
