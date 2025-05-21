@@ -3,9 +3,8 @@ import json
 import sys
 from typing import Dict, Any, Optional, List
 
-from mcp.server import MCPServer, Response
+from cmcp.server import Server, Response, Status, MethodCall
 from mcp.runner import MCPRunner
-from mcp.types import MethodCall, Resource, Status
 
 from app.compiler import RustCompiler
 from app.response_parser import ResponseParser
@@ -14,84 +13,67 @@ from app.llm_client import LlamaEdgeClient
 from app.mcp_service import RustCompilerMCP
 
 
-class RustMCPServer(MCPServer):
-    def __init__(self):
-        super().__init__("rust-compiler-mcp")
+class RustMCPServer(Server):
+    def __init__(self, mcp_service):
+        self.mcp_service = mcp_service
+        super().__init__()
         
-        # Initialize services
-        api_key = os.getenv("LLM_API_KEY")
-        if not api_key:
-            raise ValueError("LLM_API_KEY environment variable not set")
-            
-        # Initialize components
-        self.llm_client = LlamaEdgeClient(api_key=api_key)
-        self.vector_store = QdrantStore()
-        self.vector_store.create_collection("project_examples")
-        self.vector_store.create_collection("error_examples")
-        
-        # Set up the RustCompilerMCP
-        self.mcp_service = RustCompilerMCP(vector_store=self.vector_store, llm_client=self.llm_client)
-        
-        # Register methods
-        self.register_method("compile", self.compile_code)
-        self.register_method("compileAndFix", self.compile_and_fix_code)
-        self.register_method("vectorSearch", self.vector_search)
-
-    def compile_code(self, call: MethodCall) -> Response:
-        """Compile Rust code"""
-        code = call.params.get("code", "")
-        if not code:
-            return Response(status=Status.ERROR, result={"error": "Missing code parameter"})
-            
-        try:
-            result = self.mcp_service.compile_rust_code(code)
-            return Response(
-                status=Status.SUCCESS if result["success"] else Status.ERROR,
-                result=result
-            )
-        except Exception as e:
-            return Response(status=Status.ERROR, result={"error": str(e)})
-
-    def compile_and_fix_code(self, call: MethodCall) -> Response:
-        """Compile and fix Rust code"""
+    def compile_and_fix(self, call: MethodCall) -> Response:
+        """Compile and fix Rust code according to MCP standard"""
         code = call.params.get("code", "")
         description = call.params.get("description", "")
         max_attempts = int(call.params.get("max_attempts", 3))
         
         if not code or not description:
-            return Response(status=Status.ERROR, result={"error": "Missing required parameters"})
+            return Response(status=Status.ERROR, result="Missing required parameters")
             
         try:
             result = self.mcp_service.compile_and_fix_rust_code(code, description, max_attempts)
-            return Response(
-                status=Status.SUCCESS if result["success"] else Status.ERROR,
-                result=result
-            )
-        except Exception as e:
-            return Response(status=Status.ERROR, result={"error": str(e)})
-
-    def vector_search(self, call: MethodCall) -> Response:
-        """Search vector database for similar examples"""
-        query = call.params.get("query", "")
-        collection = call.params.get("collection", "project_examples")
-        limit = int(call.params.get("limit", 5))
-        
-        if not query:
-            return Response(status=Status.ERROR, result={"error": "Missing query parameter"})
             
-        try:
-            result = self.mcp_service.vector_search(query, collection, limit)
-            return Response(
-                status=Status.SUCCESS if result["success"] else Status.ERROR,
-                result=result
-            )
+            if result["success"]:
+                # Format fixed files as raw text with filename markers
+                output_text = ""
+                for filename, content in result["final_files"].items():
+                    output_text += f"[filename: {filename}]\n{content}\n\n"
+                
+                # Return raw text instead of JSON
+                return Response(status=Status.SUCCESS, result=output_text.strip())
+            else:
+                # For errors, return error message
+                return Response(status=Status.ERROR, result=f"Failed to fix code: {result.get('build_output', '')}")
         except Exception as e:
-            return Response(status=Status.ERROR, result={"error": str(e)})
+            return Response(status=Status.ERROR, result=str(e))
 
 
 if __name__ == "__main__":
+    # Initialize required components
+    from dotenv import load_dotenv
+    
+    load_dotenv()
+    
+    # Get API key from environment variable
+    api_key = os.getenv("LLM_API_KEY")
+    if not api_key:
+        raise ValueError("LLM_API_KEY environment variable not set")
+    
+    # Get embedding size from environment variable
+    llm_embed_size = int(os.getenv("LLM_EMBED_SIZE", "1536"))
+    
+    # Initialize components
+    llm_client = LlamaEdgeClient(api_key=api_key)
+    parser = ResponseParser()
+    compiler = RustCompiler()
+    
+    # Initialize vector store
+    vector_store = QdrantStore(embedding_size=llm_embed_size)
+    vector_store.create_collection("project_examples")
+    vector_store.create_collection("error_examples")
+    
+    # Initialize MCP service
+    mcp_service = RustCompilerMCP(vector_store=vector_store, llm_client=llm_client)
+    
     # Create and run the MCP server
-    server = RustMCPServer()
+    server = RustMCPServer(mcp_service)
     
     # Run the server with STDIO communication
     runner = MCPRunner(server)
