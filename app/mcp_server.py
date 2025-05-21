@@ -3,8 +3,10 @@ import json
 import sys
 from typing import Dict, Any, Optional, List
 
-# Update this import
-from mcp.server import Server, Response, Status, MethodCall
+# Update these imports with the correct paths
+from mcp.server import Server
+from mcp.server.models import Response, Status
+from mcp.server.method import MethodCall
 from mcp.runner import MCPRunner
 
 from app.compiler import RustCompiler
