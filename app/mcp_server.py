@@ -114,8 +114,25 @@ if __name__ == "__main__":
     # Initialize components
     llm_client = LlamaEdgeClient(api_key=api_key)
     vector_store = QdrantStore(embedding_size=llm_embed_size)
-    vector_store.create_collection("project_examples")
-    vector_store.create_collection("error_examples")
+
+    # Create collections with error handling
+    try:
+        vector_store.create_collection("project_examples")
+        print("Created collection: project_examples")
+    except Exception as e:
+        if "already exists" in str(e):
+            print("Collection project_examples already exists")
+        else:
+            raise
+
+    try:
+        vector_store.create_collection("error_examples")
+        print("Created collection: error_examples")
+    except Exception as e:
+        if "already exists" in str(e):
+            print("Collection error_examples already exists")
+        else:
+            raise
     
     # Initialize MCP service
     mcp_service = RustCompilerMCP(vector_store=vector_store, llm_client=llm_client)
@@ -132,4 +149,6 @@ if __name__ == "__main__":
         host = os.getenv("MCP_HOST", "0.0.0.0")
         port = int(os.getenv("MCP_PORT", "3001"))
         print(f"Starting MCP server on {host}:{port}")
-        mcp.run(host=host, port=port)
+        os.environ["MCP_HOST"] = host
+        os.environ["MCP_PORT"] = str(port)
+        mcp.run()  # No parameters
