@@ -1,20 +1,29 @@
 import os
 import json
-from typing import Dict, List, Optional, Union
-from openai import OpenAI
+import requests
+from typing import List, Dict, Any, Optional
+from openai import OpenAI  # Add this import
 
 class LlamaEdgeClient:
     """Client for interacting with LlamaEdge OpenAI-compatible API"""
     
-    def __init__(self, api_key=None):
+    def __init__(self, api_key=None, api_base=None, model=None, embed_model=None):
+        """Initialize LlamaEdgeClient with API credentials
+        
+        Args:
+            api_key: API key for LLM service
+            api_base: Base URL for API (overrides LLM_API_BASE env var)
+            model: Model name (overrides LLM_MODEL env var)
+            embed_model: Embedding model name (overrides LLM_EMBED_MODEL env var)
+        """
         self.api_key = api_key or os.getenv("LLM_API_KEY")
         if not self.api_key:
             raise ValueError("API key is required")
             
-        # Use environment variables with defaults
-        self.base_url = os.getenv("LLM_API_BASE", "http://localhost:8080/v1")
-        self.llm_model = os.getenv("LLM_MODEL", "Qwen2.5-Coder-3B-Instruct")
-        self.llm_embed_model = os.getenv("LLM_EMBED_MODEL", "gte-Qwen2-1.5B-instruct")  # Fixed variable name
+        # Use provided parameters with fallback to environment variables
+        self.base_url = api_base or os.getenv("LLM_API_BASE", "http://localhost:8080/v1")
+        self.llm_model = model or os.getenv("LLM_MODEL", "Qwen2.5-Coder-3B-Instruct")
+        self.llm_embed_model = embed_model or os.getenv("LLM_EMBED_MODEL", "gte-Qwen2-1.5B-instruct")  # Fixed variable name
         
         # Initialize OpenAI client with custom base URL
         self.client = OpenAI(

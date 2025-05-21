@@ -2,7 +2,8 @@ import os
 import uuid
 from typing import Dict, List, Optional, Any
 from qdrant_client import QdrantClient
-from qdrant_client.http import models
+from qdrant_client.http import models as qmodels
+from qdrant_client import models  # Add this import
 
 class QdrantStore:
     """Interface for Qdrant vector database"""
