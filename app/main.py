@@ -118,11 +118,25 @@ async def mcp_compile_and_fix_rust(request: dict):
     
     max_attempts = request.get("max_attempts", 3)
     
-    return rust_mcp.compile_and_fix_rust_code(
+    result = rust_mcp.compile_and_fix_rust_code(
         request["code"],
         request["description"],
         max_attempts=max_attempts
     )
+    
+    # If successful, return raw source code
+    if result["success"]:
+        # Format as raw text with filename markers
+        output_text = ""
+        for filename, content in result["final_files"].items():
+            output_text += f"[filename: {filename}]\n{content}\n\n"
+        
+        # Return as plain text
+        from fastapi.responses import PlainTextResponse
+        return PlainTextResponse(content=output_text.strip())
+    else:
+        # For errors, we can still return JSON
+        return result
 
 async def handle_project_generation(
     project_id: str, 
