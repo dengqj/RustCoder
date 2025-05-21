@@ -14,10 +14,11 @@ WORKDIR /app
 
 # Copy requirements and install dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt || echo "Some packages not found, continuing..."
+# Remove the "|| echo" part to fail if packages aren't installed
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Install MCP packages explicitly
-RUN pip install mcp-python mcp-proxy
+RUN pip install mcp-python mcp-proxy fastapi uvicorn
 
 # Copy application code
 COPY . .
@@ -28,5 +29,5 @@ RUN mkdir -p output
 # Expose port for FastAPI
 EXPOSE 8000
 
-# Add entry point for MCP server
-CMD ["python", "-m", "app.mcp_server"]
+# Add entry point for FastAPI
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

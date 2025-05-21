@@ -15,7 +15,6 @@ services:
       - QDRANT_PORT=6333
     depends_on:
       - qdrant
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   mcp-server:
     build: .

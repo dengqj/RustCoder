@@ -39,6 +39,14 @@ jobs:
           # Show running containers
           docker ps
 
+      - name: Verify container readiness
+        run: |
+          echo "Checking Docker container status..."
+          docker ps
+          docker logs $(docker ps -q --filter name=api)
+          echo "Waiting 30 more seconds for services to stabilize..."
+          sleep 30
+
       - name: Install cmcp client
         run: |
           pip install cmcp
