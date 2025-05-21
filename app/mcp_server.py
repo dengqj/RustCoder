@@ -7,7 +7,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 # Use FastMCP instead of direct Server inheritance
 from mcp.server.fastmcp import FastMCP
-from mcp.server.models import Status
 
 from app.compiler import RustCompiler
 from app.response_parser import ResponseParser
@@ -15,7 +14,45 @@ from app.vector_store import QdrantStore
 from app.llm_client import LlamaEdgeClient
 from app.mcp_service import RustCompilerMCP
 
-# Initialize MCP service globally for use in tools
+# Create a RustMCPServer class for the run_mcp_server.py script
+class RustMCPServer:
+    def __init__(self, mcp_service):
+        self.mcp = FastMCP("Rust Compiler")
+        self.mcp_service = mcp_service
+        
+        # Register tools
+        @self.mcp.tool()
+        def compile(code: str) -> Dict[str, Any]:
+            """Compile Rust code"""
+            return self.mcp_service.compile_rust_code(code)
+            
+        @self.mcp.tool()
+        def compileAndFix(code: str, description: str, max_attempts: int = 3) -> Dict[str, Any]:
+            """Compile and fix Rust code"""
+            result = self.mcp_service.compile_and_fix_rust_code(code, description, max_attempts)
+            
+            if result["success"]:
+                # Format fixed files as raw text with filename markers
+                output_text = ""
+                for filename, content in result["final_files"].items():
+                    output_text += f"[filename: {filename}]\n{content}\n\n"
+                
+                return output_text.strip()
+            else:
+                return {"status": "error", "message": f"Failed to fix code: {result.get('build_output', '')}"}
+                
+        @self.mcp.tool()
+        def vectorSearch(query: str, collection: str, limit: int = 3) -> Dict[str, Any]:
+            """Search vector database for similar examples"""
+            embedding = self.mcp_service.llm_client.get_embeddings([query])[0]
+            results = self.mcp_service.vector_store.search(collection, embedding, limit=limit)
+            return {"results": results}
+    
+    def run(self, host="0.0.0.0", port=3001):
+        """Run the MCP server"""
+        self.mcp.run(host=host, port=port)
+
+# For direct invocation
 mcp = FastMCP("Rust Compiler")
 mcp_service = None  # Will be initialized in main
 
