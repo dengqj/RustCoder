@@ -1,0 +1,77 @@
+name: Test MCP Server
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    env:
+      LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+      LLM_API_BASE: https://coder.gaia.domains/v1
+      LLM_MODEL: Qwen2.5-Coder-32B-Instruct-Q5_K_M
+      LLM_EMBED_MODEL: nomic-embed
+      LLM_EMBED_SIZE: 768
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4.2.2
+
+      - name: Run docker compose
+        uses: hoverkraft-tech/compose-action@v2.0.1
+        with:
+          compose-file: ./docker-compose.yml
+          up-flags: "-d --build"
+
+      - name: Wait for services to be ready
+        run: |
+          echo "Waiting for services to be ready..."
+          sleep 30  # Give services time to initialize
+          docker ps  # Display running containers
+
+      - name: Install cmcp client
+        run: |
+          pip install cmcp
+
+      - name: Test FastAPI endpoints
+        run: |
+          echo "Testing FastAPI /mcp/compile endpoint..."
+          curl -s -X POST http://localhost:8000/mcp/compile \
+            -H "Content-Type: application/json" \
+            -d '{
+              "code": "[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    println!(\"Hello, World!\");\n}"
+            }' | jq
+          
+          echo "Testing FastAPI /mcp/compile-and-fix endpoint..."
+          curl -s -X POST http://localhost:8000/mcp/compile-and-fix \
+            -H "Content-Type: application/json" \
+            -d '{
+              "code": "[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    println!(\"Hello, World!\" // Missing closing parenthesis\n}",
+              "description": "A simple hello world program",
+              "max_attempts": 3
+            }'
+
+      - name: Test MCP Server with cmcp client
+        run: |
+          echo "Testing MCP server compile method..."
+          echo '{
+            "code": "[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    println!(\"Hello, World!\");\n}"
+          }' | cmcp call http://localhost:3000 rust-compiler compile
+          
+          echo "Testing MCP server compileAndFix method..."
+          echo '{
+            "code": "[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    println!(\"Hello, World!\" // Missing closing parenthesis\n}",
+            "description": "A simple hello world program",
+            "max_attempts": 3
+          }' | cmcp call http://localhost:3000 rust-compiler compileAndFix
+
+      - name: Check Docker logs on failure
+        if: failure()
+        run: |
+          echo "Checking Docker logs for troubleshooting..."
+          docker-compose logs
