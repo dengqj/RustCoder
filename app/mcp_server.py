@@ -3,14 +3,11 @@ import json
 import sys
 from typing import Dict, Any, Optional, List
 
-
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# Update these imports with the correct paths
-from mcp.server import Server
-from mcp.server.models import Response, Status
-from mcp.server.method import MethodCall
-from mcp.runner import MCPRunner
+# Use FastMCP instead of direct Server inheritance
+from mcp.server.fastmcp import FastMCP
+from mcp.server.models import Status
 
 from app.compiler import RustCompiler
 from app.response_parser import ResponseParser
@@ -18,38 +15,43 @@ from app.vector_store import QdrantStore
 from app.llm_client import LlamaEdgeClient
 from app.mcp_service import RustCompilerMCP
 
+# Initialize MCP service globally for use in tools
+mcp = FastMCP("Rust Compiler")
+mcp_service = None  # Will be initialized in main
 
-class RustMCPServer(Server):
-    def __init__(self, mcp_service):
-        self.mcp_service = mcp_service
-        super().__init__()
+@mcp.tool()
+def compile_and_fix(code: str, description: str, max_attempts: int = 3) -> Dict[str, Any]:
+    """
+    Compile and fix Rust code
+    
+    Args:
+        code: Multi-file Rust code with [filename:] markers
+        description: Project description for context
+        max_attempts: Maximum number of attempts to fix errors
         
-    def compile_and_fix(self, call: MethodCall) -> Response:
-        """Compile and fix Rust code according to MCP standard"""
-        code = call.params.get("code", "")
-        description = call.params.get("description", "")
-        max_attempts = int(call.params.get("max_attempts", 3))
+    Returns:
+        Fixed code or error details
+    """
+    global mcp_service
+    
+    if not code or not description:
+        return {"status": "error", "message": "Missing required parameters"}
         
-        if not code or not description:
-            return Response(status=Status.ERROR, result="Missing required parameters")
+    try:
+        result = mcp_service.compile_and_fix_rust_code(code, description, max_attempts)
+        
+        if result["success"]:
+            # Format fixed files as raw text with filename markers
+            output_text = ""
+            for filename, content in result["final_files"].items():
+                output_text += f"[filename: {filename}]\n{content}\n\n"
             
-        try:
-            result = self.mcp_service.compile_and_fix_rust_code(code, description, max_attempts)
-            
-            if result["success"]:
-                # Format fixed files as raw text with filename markers
-                output_text = ""
-                for filename, content in result["final_files"].items():
-                    output_text += f"[filename: {filename}]\n{content}\n\n"
-                
-                # Return raw text instead of JSON
-                return Response(status=Status.SUCCESS, result=output_text.strip())
-            else:
-                # For errors, return error message
-                return Response(status=Status.ERROR, result=f"Failed to fix code: {result.get('build_output', '')}")
-        except Exception as e:
-            return Response(status=Status.ERROR, result=str(e))
-
+            return output_text.strip()
+        else:
+            # For errors, return error message
+            return {"status": "error", "message": f"Failed to fix code: {result.get('build_output', '')}"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 if __name__ == "__main__":
     # Initialize required components
@@ -67,10 +69,6 @@ if __name__ == "__main__":
     
     # Initialize components
     llm_client = LlamaEdgeClient(api_key=api_key)
-    parser = ResponseParser()
-    compiler = RustCompiler()
-    
-    # Initialize vector store
     vector_store = QdrantStore(embedding_size=llm_embed_size)
     vector_store.create_collection("project_examples")
     vector_store.create_collection("error_examples")
@@ -78,9 +76,16 @@ if __name__ == "__main__":
     # Initialize MCP service
     mcp_service = RustCompilerMCP(vector_store=vector_store, llm_client=llm_client)
     
-    # Create and run the MCP server
-    server = RustMCPServer(mcp_service)
+    # Determine transport mode from arguments or environment
+    transport = os.getenv("MCP_TRANSPORT", "stdio")
     
-    # Run the server with STDIO communication
-    runner = MCPRunner(server)
-    runner.run(sys.stdin, sys.stdout)
+    # Run server with appropriate transport
+    if transport == "stdio":
+        # Run in STDIO mode
+        mcp.run(transport="stdio")
+    else:
+        # Run in HTTP/SSE mode
+        host = os.getenv("MCP_HOST", "0.0.0.0")
+        port = int(os.getenv("MCP_PORT", "3001"))
+        print(f"Starting MCP server on {host}:{port}")
+        mcp.run(host=host, port=port)
