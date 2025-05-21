@@ -150,4 +150,4 @@ if __name__ == "__main__":
         print(f"Starting MCP server on {host}:{port}")
         os.environ["MCP_HOST"] = host
         os.environ["MCP_PORT"] = str(port)
-        mcp.run(transport="sse")  # Change http to sse
+        mcp.run(transport="sse")  # Using SSE transport

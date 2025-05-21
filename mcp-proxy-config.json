@@ -2,14 +2,8 @@
     "providers": [
       {
         "name": "rust-compiler",
-        "command": "python -m app.mcp_server",
-        "cwd": "/app",
+        "url": "http://mcp-server:3001/sse",
         "methods": ["compile", "compileAndFix", "vectorSearch"]
       }
-    ],
-    "endpoints": {
-      "rust-compiler": {
-        "command": ["python", "-m", "examples.run_mcp_server"]
-      }
-    }
+    ]
   }
