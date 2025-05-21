@@ -147,7 +147,7 @@ curl http://localhost:8000/project/123e4567-e89b-12d3-a456-426614174000
 
 ## 🔧 MCP (Model-Compiler-Processor) tools
 
-The MCP server is available via the HTTP SSE transport via the `http://localhost:8000/sse` URL. The MCP server can be accessed using the [cmcp command-line client](https://github.com/RussellLuo/cmcp). To install the `cmcp` tool,
+The MCP server is available via the HTTP SSE transport via the `http://localhost:3000/sse` URL. The MCP server can be accessed using the [cmcp command-line client](https://github.com/RussellLuo/cmcp). To install the `cmcp` tool,
 
 ```bash
 pip install cmcp
@@ -160,7 +160,7 @@ pip install cmcp
 #### 📥 Request example:
 
 ```bash
-cmcp http://localhost:8000 tools/call -d '{ \
+cmcp http://localhost:3000 tools/call -d '{ \
     "name": "compile", \
     "arguments": { \
         "code: "[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    println!(\"Hello, World!\");\n}" \
@@ -191,7 +191,7 @@ cmcp http://localhost:8000 tools/call -d '{ \
 ### 📥 Request example:
 
 ```bash
-cmcp http://localhost:8000 tools/call -d '{ \
+cmcp http://localhost:3000 tools/call -d '{ \
     "name": "compileAndFix", \
     "arguments": { \
         "code: "[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    println!(\"Hello, World!\" // Missing closing parenthesis \n}" \
@@ -222,7 +222,7 @@ cmcp http://localhost:8000 tools/call -d '{ \
 ### 📥 Request example:
 
 ```bash
-cmcp http://localhost:8000 tools/call -d '{ \
+cmcp http://localhost:3000 tools/call -d '{ \
     "name": "generate", \
     "arguments": { \
         "description": "A command-line calculator in Rust", "requirements": "Should support addition, subtraction, multiplication, and division" \
