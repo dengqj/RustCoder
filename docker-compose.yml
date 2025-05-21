@@ -28,6 +28,8 @@ services:
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6333
     command: python -m examples.run_mcp_server
+    ports:
+      - "3001:3001"  # Add this line to expose port 3001
     volumes:
       - .:/app
     depends_on:
@@ -42,6 +44,7 @@ services:
     command: mcp-proxy http://mcp-server:3001/sse --port 3000 --host 0.0.0.0 --allow-origin="*"
     depends_on:
       - mcp-server
+    restart: on-failure  # Add restart policy to retry connection
       
   qdrant:
     image: qdrant/qdrant
