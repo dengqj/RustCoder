@@ -48,19 +48,19 @@ jobs:
           if ! docker ps | grep -q api; then
             echo "ERROR: API container is not running!"
             echo "Building container logs:"
-            docker-compose logs --tail=100 api
+            docker compose logs --tail=100 api
             exit 1
           fi
           
           if ! docker ps | grep -q mcp-server; then
             echo "ERROR: MCP server container is not running!"
-            docker-compose logs --tail=100 mcp-server
+            docker compose logs --tail=100 mcp-server
             exit 1
           fi
           
           if ! docker ps | grep -q mcp-proxy; then
             echo "ERROR: MCP proxy container is not running!"
-            docker-compose logs --tail=100 mcp-proxy
+            docker compose logs --tail=100 mcp-proxy
             exit 1
           fi
           

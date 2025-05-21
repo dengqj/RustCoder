@@ -6,5 +6,10 @@
         "cwd": "/app",
         "methods": ["compile", "compileAndFix", "vectorSearch"]
       }
-    ]
+    ],
+    "endpoints": {
+      "rust-compiler": {
+        "command": ["python", "-m", "examples.run_mcp_server"]
+      }
+    }
   }

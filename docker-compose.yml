@@ -18,6 +18,8 @@ services:
 
   mcp-server:
     build: .
+    ports:
+      - "3001:3001"  # Add port mapping for the MCP server
     environment:
       - LLM_API_KEY=${LLM_API_KEY}
       - LLM_API_BASE=${LLM_API_BASE:-https://coder.gaia.domains/v1}
@@ -28,7 +30,8 @@ services:
       - QDRANT_PORT=6333
     depends_on:
       - qdrant
-    command: python -m app.mcp_server
+    # Use the run_mcp_server.py script which properly sets up the server
+    command: python -m examples.run_mcp_server
     
   mcp-proxy:
     image: sparfenyuk/mcp-proxy:latest
