@@ -43,7 +43,18 @@ jobs:
         run: |
           echo "Checking Docker container status..."
           docker ps
-          docker logs $(docker ps -q --filter name=api)
+          
+          # Check if API container exists before getting logs
+          if docker ps | grep -q api; then
+            echo "API container is running, checking logs:"
+            docker logs $(docker ps -q --filter name=api)
+          else
+            echo "ERROR: API container is not running!"
+            echo "Checking docker-compose logs for errors:"
+            docker compose logs
+            exit 1
+          fi
+          
           echo "Waiting 30 more seconds for services to stabilize..."
           sleep 30
 
