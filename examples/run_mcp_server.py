@@ -17,13 +17,21 @@ def main():
     # Get LLM API base URL
     llm_api_base = os.getenv("LLM_API_BASE", "https://coder.gaia.domains/v1")
     llm_model = os.getenv("LLM_MODEL", "Qwen2.5-Coder-32B-Instruct-Q5_K_M")
+    llm_embed_model = os.getenv("LLM_EMBED_MODEL", "nomic-embed")
     
     # Get Qdrant connection details
     qdrant_host = os.getenv("QDRANT_HOST", "localhost")
     qdrant_port = int(os.getenv("QDRANT_PORT", "6333"))
     
-    llm_client = LlamaEdgeClient(api_key=api_key, api_base=llm_api_base, model=llm_model)
-    vector_store = QdrantStore(embedding_size=llm_embed_size, host=qdrant_host, port=qdrant_port)
+    # Set environment variables for QdrantStore
+    os.environ["QDRANT_HOST"] = qdrant_host
+    os.environ["QDRANT_PORT"] = str(qdrant_port)
+    
+    # Initialize LlamaEdgeClient with all required parameters
+    llm_client = LlamaEdgeClient(api_key=api_key, api_base=llm_api_base, model=llm_model, embed_model=llm_embed_model)
+    
+    # Initialize QdrantStore with just the embedding_size parameter
+    vector_store = QdrantStore(embedding_size=llm_embed_size)
     vector_store.create_collection("project_examples")
     vector_store.create_collection("error_examples")
     

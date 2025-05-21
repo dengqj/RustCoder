@@ -1,6 +1,7 @@
 import os
 import uuid
 import shutil
+import json  # Move from within functions to top level
 from typing import Dict, List, Optional
 from dotenv import load_dotenv
 
@@ -8,7 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from fastapi import FastAPI, BackgroundTasks, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse  # Move from within function to top level
 from pydantic import BaseModel
 
 from app.prompt_generator import PromptGenerator
@@ -96,7 +97,6 @@ async def get_project_status(project_id: str):
         raise HTTPException(status_code=404, detail="Project not found")
     
     # Read status file
-    import json
     with open(status_file, 'r') as f:
         status = json.load(f)
         
@@ -132,7 +132,6 @@ async def mcp_compile_and_fix_rust(request: dict):
             output_text += f"[filename: {filename}]\n{content}\n\n"
         
         # Return as plain text
-        from fastapi.responses import PlainTextResponse
         return PlainTextResponse(content=output_text.strip())
     else:
         # For errors, we can still return JSON
@@ -298,7 +297,6 @@ Please provide the fixed code for all affected files.
 
 def save_status(project_dir: str, status: Dict):
     """Save project status to file"""
-    import json
     with open(f"{project_dir}/status.json", 'w') as f:
         json.dump(status, f)
 
