@@ -36,15 +36,15 @@ services:
       - qdrant
 
   mcp-proxy:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/microsoft/mcp-proxy:latest  # Use the official image
     ports:
       - "3000:3000"
-    command: mcp-proxy http://mcp-server:3001/sse --port 3000 --host 0.0.0.0 --allow-origin="*"
+    command: http://mcp-server:3001/sse --port 3000 --host 0.0.0.0 --allow-origin="*"
+    volumes:
+      - ./mcp-proxy-config.json:/app/mcp-proxy-config.json
     depends_on:
       - mcp-server
-    restart: on-failure  # Add restart policy to retry connection
+    restart: on-failure
       
   qdrant:
     image: qdrant/qdrant
