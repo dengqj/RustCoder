@@ -17,34 +17,26 @@ services:
       - qdrant
 
   mcp-server:
-    build: .
-    ports:
-      - "3001:3001"  # Add port mapping for the MCP server
+    build:
+      context: .
+      dockerfile: Dockerfile
     environment:
+      - MCP_TRANSPORT=sse
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=3001
       - LLM_API_KEY=${LLM_API_KEY}
-      - LLM_API_BASE=${LLM_API_BASE:-https://coder.gaia.domains/v1}
-      - LLM_MODEL=${LLM_MODEL:-Qwen2.5-Coder-32B-Instruct-Q5_K_M}
-      - LLM_EMBED_MODEL=${LLM_EMBED_MODEL:-nomic-embed}
-      - LLM_EMBED_SIZE=${LLM_EMBED_SIZE:-768}
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6333
+    command: python -m examples.run_mcp_server
+    volumes:
+      - .:/app
     depends_on:
       - qdrant
-    # Use the run_mcp_server.py script which properly sets up the server
-    command: python -m examples.run_mcp_server
-    
+
   mcp-proxy:
-    image: sparfenyuk/mcp-proxy:latest
+    image: ghcr.io/microsoft/mcp-proxy:latest
     ports:
       - "3000:3000"
-    volumes:
-      - ./mcp-proxy-config.json:/app/mcp-proxy-config.json
+    command: http://mcp-server:3001/sse --port 3000 --host 0.0.0.0 --allow-origin="*"
     depends_on:
       - mcp-server
-      
-  qdrant:
-    image: qdrant/qdrant
-    ports:
-      - "6333:6333"
-    volumes:
-      - ./qdrant_data:/qdrant/storage
