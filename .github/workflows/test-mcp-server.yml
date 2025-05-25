@@ -252,7 +252,7 @@ jobs:
           echo "First 20 lines of response:"
           echo "$RESPONSE" | head -20
 
-      - name: Test workflow: /generate-sync → /mcp/compile
+      - name: "Test workflow: /generate-sync → /mcp/compile"
         run: |
           echo "Testing workflow: /generate-sync → /mcp/compile..."
           
