@@ -24,7 +24,11 @@ class RustMCPServer:
         @self.mcp.tool()
         def compile(code: str) -> Dict[str, Any]:
             """Compile Rust code"""
-            return self.mcp_service.compile_rust_code(code)
+            result = self.mcp_service.compile_rust_code(code)
+            if result["success"]:
+                return "success"
+            else:
+                return {"status": "error", "message": f"Compilation failed: {result.get('build_output', '')}"}
             
         @self.mcp.tool()
         def compileAndFix(code: str, description: str, max_attempts: int = 3) -> Dict[str, Any]:
@@ -96,7 +100,50 @@ def compile_and_fix(code: str, description: str, max_attempts: int = 3) -> Dict[
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+# For the standalone mcp tool definitions
+
+@mcp.tool()
+def compile(code: str) -> Dict[str, Any]:
+    """Compile Rust code"""
+    global mcp_service
+    
+    if not code:
+        return {"status": "error", "message": "Missing required parameters"}
+        
+    try:
+        result = mcp_service.compile_rust_code(code)
+        if result["success"]:
+            return "success"
+        else:
+            return {"status": "error", "message": f"Compilation failed: {result.get('build_output', '')}"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@mcp.tool()
+def compileAndFix(code: str, description: str, max_attempts: int = 3) -> Dict[str, Any]:
+    """Compile and fix Rust code"""
+    global mcp_service
+    
+    if not code or not description:
+        return {"status": "error", "message": "Missing required parameters"}
+        
+    try:
+        result = mcp_service.compile_and_fix_rust_code(code, description, max_attempts)
+        
+        if result["success"]:
+            # Format fixed files as raw text with filename markers
+            output_text = ""
+            for filename, content in result["final_files"].items():
+                output_text += f"[filename: {filename}]\n{content}\n\n"
+            
+            return output_text.strip()
+        else:
+            return {"status": "error", "message": f"Failed to fix code: {result.get('build_output', '')}"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 if __name__ == "__main__":
+    # Only run server setup if script is executed directly
     # Initialize required components
     from dotenv import load_dotenv
     
