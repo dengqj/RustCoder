@@ -17,6 +17,7 @@ jobs:
       LLM_MODEL: Qwen2.5-Coder-32B-Instruct-Q5_K_M
       LLM_EMBED_MODEL: nomic-embed
       LLM_EMBED_SIZE: 768
+      SKIP_VECTOR_SEARCH: "true"  
 
     steps:
       - name: Checkout code
