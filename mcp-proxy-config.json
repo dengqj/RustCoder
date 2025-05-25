@@ -5,5 +5,9 @@
       "url": "http://mcp-server:3001/sse",
       "methods": ["compile", "compileAndFix", "vectorSearch"]
     }
-  ]
+  ],
+  "name": "rust-compiler.compile",
+  "arguments": {
+    "code": "..."
+  }
 }
