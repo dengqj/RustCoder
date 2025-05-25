@@ -4,6 +4,7 @@ import shutil
 import json  # Move from within functions to top level
 from typing import Dict, List, Optional
 from dotenv import load_dotenv
+import tempfile  # Import tempfile for temporary directory handling
 
 # Load environment variables from .env file
 load_dotenv()
@@ -357,6 +358,150 @@ async def download_project(project_id: str):
         filename=f"project-{project_id}.zip",
         media_type="application/zip"
     )
+
+@app.post("/generate-sync")
+async def generate_project_sync(request: ProjectRequest):
+    """
+    Generate a Rust project synchronously and return all files in text format.
+    This endpoint will wait for the full generation process to complete.
+    """
+    try:
+        # Create temporary directory for generation
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Set up status tracking
+            status = {
+                "status": "generating",
+                "message": "Generating project code"
+            }
+            
+            # Skip vector search if environment variable is set
+            skip_vector_search = os.getenv("SKIP_VECTOR_SEARCH", "").lower() == "true"
+            
+            example_text = ""
+            if not skip_vector_search:
+                try:
+                    # Check for similar projects in vector DB
+                    query_embedding = llm_client.get_embeddings([request.description])[0]
+                    similar_projects = vector_store.search("project_examples", query_embedding, limit=1)
+                    
+                    if similar_projects:
+                        example_text = f"\nHere's a similar project you can use as reference:\n{similar_projects[0]['example']}"
+                except Exception as e:
+                    print(f"Vector search error (non-critical): {e}")
+            
+            requirements = request.requirements or ""
+            if example_text:
+                requirements = f"{requirements}\n{example_text}" if requirements else example_text
+            
+            # Generate prompt and get response from LLM
+            prompt = prompt_gen.generate_prompt(request.description, requirements)
+            
+            system_message = """You are an expert Rust developer. Create a complete, working Rust project.
+            Always include at minimum these files: Cargo.toml, src/main.rs, and README.md.
+            For Cargo.toml, include proper dependencies and metadata.
+            Format your response with clear file headers like:
+            
+            [filename: Cargo.toml]
+            <file content>
+            
+            [filename: src/main.rs]
+            <file content>
+            """
+            
+            response = llm_client.generate_text(prompt, system_message=system_message)
+            
+            # Parse response into files
+            files = parser.parse_response(response)
+            
+            # Ensure essential files exist
+            if "Cargo.toml" not in files:
+                project_name = request.description.lower().replace(" ", "_").replace("-", "_")[:20]
+                files["Cargo.toml"] = f"""[package]
+name = "{project_name}"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+"""
+            
+            if "src/main.rs" not in files and "src\\main.rs" not in files:
+                files["src/main.rs"] = """fn main() {
+    println!("Hello, world!");
+}
+"""
+            
+            # Write files
+            parser.write_files(files, temp_dir)
+            
+            # Compile the project
+            success, output = compiler.build_project(temp_dir)
+            
+            if not success:
+                # Try to fix compilation errors
+                error_context = compiler.extract_error_context(output)
+                
+                # Skip vector search if environment variable is set
+                similar_errors = []
+                if not skip_vector_search:
+                    try:
+                        error_embedding = llm_client.get_embeddings([error_context["full_error"]])[0]
+                        similar_errors = vector_store.search("error_examples", error_embedding, limit=3)
+                    except Exception as e:
+                        print(f"Vector search error (non-critical): {e}")
+                
+                # Generate fix prompt
+                fix_examples = ""
+                if similar_errors:
+                    fix_examples = "Here are some examples of similar errors and their fixes:\n\n"
+                    for i, err in enumerate(similar_errors):
+                        fix_examples += f"Example {i+1}:\n{err['error']}\nFix: {err['solution']}\n\n"
+                
+                fix_prompt = f"""
+Here is a Rust project that failed to compile. Help me fix the compilation errors.
+
+Project description: {request.description}
+
+Compilation error:
+{error_context["full_error"]}
+
+{fix_examples}
+
+Please provide the fixed code for all affected files.
+"""
+                
+                # Get fix from LLM
+                fix_response = llm_client.generate_text(fix_prompt)
+                
+                # Parse and apply fixes
+                fixed_files = parser.parse_response(fix_response)
+                for filename, content in fixed_files.items():
+                    files[filename] = content  # Update our files dictionary
+                    file_path = os.path.join(temp_dir, filename)
+                    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                    with open(file_path, 'w') as f:
+                        f.write(content)
+                
+                # Try compiling again
+                success, output = compiler.build_project(temp_dir)
+            
+            # Format as raw text with filename markers
+            output_text = ""
+            for filename, content in files.items():
+                output_text += f"[filename: {filename}]\n{content}\n\n"
+            
+            # Include build result as a comment
+            build_status = "# Build succeeded" if success else f"# Build failed\n# {output}"
+            output_text += f"{build_status}\n"
+            
+            # Return as plain text
+            return PlainTextResponse(content=output_text.strip())
+            
+    except Exception as e:
+        # Return error message
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Project generation failed: {str(e)}"}
+        )
 
 if __name__ == "__main__":
     import uvicorn
