@@ -214,6 +214,75 @@ jobs:
           echo "Project download successful!"
           ls -la "project-$PROJECT_ID.zip"
 
+      - name: Test /generate-sync endpoint
+        run: |
+          echo "Testing /generate-sync endpoint..."
+          RESPONSE=$(curl -s -S -f -X POST http://localhost:8000/generate-sync \
+            -H "Content-Type: application/json" \
+            -d '{
+              "description": "A simple hello world program in Rust",
+              "requirements": "Print a greeting message to the console"
+            }' || echo "CURL_FAILED")
+
+          if [ "$RESPONSE" = "CURL_FAILED" ]; then
+            echo "Failed to connect to API service"
+            docker ps
+            docker logs $(docker ps -q --filter name=api)
+            exit 1
+          fi
+          
+          # Save response to file for later use
+          echo "$RESPONSE" > generate_output.txt
+          
+          # Verify the response format has filename markers
+          if ! echo "$RESPONSE" | grep -q "\[filename:"; then
+            echo "Response does not contain filename markers:"
+            echo "$RESPONSE" | head -20
+            exit 1
+          fi
+          
+          # Check if build succeeded
+          if ! echo "$RESPONSE" | grep -q "# Build succeeded"; then
+            echo "Build did not succeed:"
+            echo "$RESPONSE" | tail -20
+            exit 1
+          fi
+          
+          echo "Generate-sync successful! Response contains code files in text format."
+          echo "First 20 lines of response:"
+          echo "$RESPONSE" | head -20
+
+      - name: Test workflow: /generate-sync → /mcp/compile
+        run: |
+          echo "Testing workflow: /generate-sync → /mcp/compile..."
+          
+          # Get the output from the previous step
+          GENERATE_OUTPUT=$(cat generate_output.txt)
+          
+          # Pass the generated code directly to compile
+          COMPILE_RESPONSE=$(curl -s -S -f -X POST http://localhost:8000/mcp/compile \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"code\": $(echo "$GENERATE_OUTPUT" | jq -Rs .)
+            }" || echo "CURL_FAILED")
+
+          if [ "$COMPILE_RESPONSE" = "CURL_FAILED" ]; then
+            echo "Failed to connect to API service"
+            docker ps
+            docker logs $(docker ps -q --filter name=api)
+            exit 1
+          fi
+          
+          # Check for success in response
+          if ! echo "$COMPILE_RESPONSE" | jq -e '.success == true' > /dev/null; then
+            echo "Compilation failed:"
+            echo "$COMPILE_RESPONSE" | jq || echo "$COMPILE_RESPONSE"
+            exit 1
+          fi
+          
+          echo "Workflow test successful! Generated code compiles correctly."
+          echo "$COMPILE_RESPONSE" | jq || echo "$COMPILE_RESPONSE"
+
       - name: Check Docker logs on failure
         if: failure()
         run: |
