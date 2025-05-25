@@ -300,6 +300,46 @@ def save_status(project_dir: str, status: Dict):
     with open(f"{project_dir}/status.json", 'w') as f:
         json.dump(status, f)
 
+@app.get("/project/{project_id}/files/{file_path:path}")
+async def get_project_file(project_id: str, file_path: str):
+    """Get the contents of a specific file from a generated project"""
+    full_path = os.path.join("output", project_id, file_path)
+    
+    if not os.path.exists(full_path) or not os.path.isfile(full_path):
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    try:
+        with open(full_path, 'r') as f:
+            content = f.read()
+        return PlainTextResponse(content=content)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error reading file: {str(e)}")
+
+@app.get("/project/{project_id}/download")
+async def download_project(project_id: str):
+    """Create a zip archive of the project and return it for download"""
+    from fastapi.responses import FileResponse
+    import zipfile
+    
+    project_dir = f"output/{project_id}"
+    if not os.path.exists(project_dir):
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Create a zip file
+    zip_path = f"{project_dir}.zip"
+    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        for root, _, files in os.walk(project_dir):
+            for file in files:
+                file_path = os.path.join(root, file)
+                arcname = os.path.relpath(file_path, os.path.dirname(project_dir))
+                zipf.write(file_path, arcname)
+    
+    return FileResponse(
+        path=zip_path,
+        filename=f"project-{project_id}.zip",
+        media_type="application/zip"
+    )
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
