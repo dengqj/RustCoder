@@ -60,7 +60,7 @@ class RustMCPServer:
         
         print(f"Starting MCP server on {host}:{port}")
         # Use sse transport instead of http
-        self.mcp.run(transport="sse")
+        self.mcp.run(transport="sse")  # or "http" depending on cmcp version
 
 # For direct invocation
 mcp = FastMCP("Rust Compiler")
@@ -197,4 +197,4 @@ if __name__ == "__main__":
         print(f"Starting MCP server on {host}:{port}")
         os.environ["MCP_HOST"] = host
         os.environ["MCP_PORT"] = str(port)
-        mcp.run(transport="sse")  # Using SSE transport
+        mcp.run(transport="sse")  # or "http" depending on cmcp version
