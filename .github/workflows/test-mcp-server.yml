@@ -256,10 +256,10 @@ jobs:
         run: |
           echo "Testing workflow: /generate-sync → /mcp/compile..."
           
-          # Get the output from the previous step
-          GENERATE_OUTPUT=$(cat generate_output.txt)
+          # Get the output from the previous step and remove the build status comment
+          GENERATE_OUTPUT=$(cat generate_output.txt | sed '/^# Build/,$d')
           
-          # Pass the generated code directly to compile
+          # Pass the cleaned generated code directly to compile
           COMPILE_RESPONSE=$(curl -s -S -f -X POST http://localhost:8000/mcp/compile \
             -H "Content-Type: application/json" \
             -d "{
