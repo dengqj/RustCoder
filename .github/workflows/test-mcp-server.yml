@@ -16,7 +16,7 @@ jobs:
       LLM_API_BASE: https://coder.gaia.domains/v1
       LLM_MODEL: Qwen2.5-Coder-32B-Instruct-Q5_K_M
       LLM_EMBED_MODEL: nomic-embed
-      LLM_EMBED_SIZE: 1536
+      LLM_EMBED_SIZE: 768
 
     steps:
       - name: Checkout code
