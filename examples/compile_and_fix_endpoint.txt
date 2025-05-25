@@ -1,0 +1,7 @@
+curl -X POST http://localhost:8000/mcp/compile-and-fix \
+-H "Content-Type: application/json" \
+-d '{
+  "code": "[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    println!(\"Hello, World!\" // Missing closing parenthesis\n}",
+  "description": "A simple hello world program",
+  "max_attempts": 3
+}'
