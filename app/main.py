@@ -155,18 +155,27 @@ async def handle_project_generation(
     save_status(project_dir, status)
     
     try:
-        # Step 1: Check if similar project exists in vector DB
-        query_embedding = llm_client.get_embeddings([description])[0]
-        similar_projects = vector_store.search("project_examples", query_embedding, limit=1)
+        # Skip vector search if environment variable is set
+        skip_vector_search = os.getenv("SKIP_VECTOR_SEARCH", "").lower() == "true"
         
-        # If we found a similar project, use it as reference
         example_text = ""
-        if similar_projects:
-            example_text = f"\nHere's a similar project you can use as reference:\n{similar_projects[0]['example']}"
-            if requirements:
-                requirements += example_text
-            else:
-                requirements = example_text
+        if not skip_vector_search:
+            try:
+                # Step 1: Check if similar project exists in vector DB
+                query_embedding = llm_client.get_embeddings([description])[0]
+                similar_projects = vector_store.search("project_examples", query_embedding, limit=1)
+                
+                # If we found a similar project, use it as reference
+                if similar_projects:
+                    example_text = f"\nHere's a similar project you can use as reference:\n{similar_projects[0]['example']}"
+            except Exception as e:
+                print(f"Vector search error (non-critical): {e}")
+                # Continue without vector search results
+        
+        if example_text and requirements:
+            requirements += example_text
+        elif example_text:
+            requirements = example_text
         
         # Step 2: Generate prompt and get response from LLM
         prompt = prompt_gen.generate_prompt(description, requirements)
@@ -232,10 +241,19 @@ edition = "2021"
             # Extract error context
             error_context = compiler.extract_error_context(output)
             
-            # Find similar errors in vector DB
-            error_embedding = llm_client.get_embeddings([error_context["full_error"]])[0]
-            similar_errors = vector_store.search("error_examples", error_embedding, limit=3)
+            # Skip vector search if environment variable is set
+            skip_vector_search = os.getenv("SKIP_VECTOR_SEARCH", "").lower() == "true"
+            similar_errors = []
             
+            if not skip_vector_search:
+                try:
+                    # Find similar errors in vector DB
+                    error_embedding = llm_client.get_embeddings([error_context["full_error"]])[0]
+                    similar_errors = vector_store.search("error_examples", error_embedding, limit=3)
+                except Exception as e:
+                    print(f"Vector search error (non-critical): {e}")
+                    # Continue without vector search results
+        
             # Generate fix prompt
             fix_examples = ""
             if similar_errors:
