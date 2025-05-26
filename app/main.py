@@ -117,10 +117,17 @@ async def compile_and_fix_rust(request: dict):
     if "code" not in request or "description" not in request:
         raise HTTPException(status_code=400, detail="Missing required fields")
     
-    max_attempts = request.get("max_attempts", 3)
+    max_attempts = request.get("max_attempts", 10)
+    
+    # Pre-process code to fix common syntax errors
+    code = request["code"]
+    # Fix missing parenthesis in println! macro
+    if "println!(" in code and ");" not in code:
+        code = code.replace("println!(\"", "println!(\"") 
+        code = code.replace("\" //", "\"); //")
     
     result = rust_mcp.compile_and_fix_rust_code(
-        request["code"],
+        code,
         request["description"],
         max_attempts=max_attempts
     )
