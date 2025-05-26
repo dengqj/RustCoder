@@ -498,26 +498,6 @@ async def generate_project_sync(request: ProjectRequest):
     Generate a Rust project synchronously and return all files in text format.
     This endpoint will wait for the full generation process to complete.
     """
-    if USE_MOCK_LLM:
-        # Return mock response
-        return """[filename: Cargo.toml]
-[package]
-name = "hello_world"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-
-[filename: src/main.rs]
-fn main() {
-    println!("Hello, World!");
-}
-
-[filename: README.md]
-# Hello World
-
-This is a simple Rust program that prints "Hello, World!".
-"""
     try:
         # Create temporary directory for generation
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -527,10 +507,14 @@ This is a simple Rust program that prints "Hello, World!".
                 "message": "Generating project code"
             }
             
+            # Initialize these variables early to avoid "referenced before assignment" errors
+            example_text = ""
+            error_context = {"full_error": ""}
+            similar_errors = []
+            
             # Skip vector search if environment variable is set
             skip_vector_search = os.getenv("SKIP_VECTOR_SEARCH", "").lower() == "true"
             
-            example_text = ""
             if not skip_vector_search:
                 try:
                     # Check for similar projects in vector DB
