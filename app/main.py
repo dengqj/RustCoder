@@ -516,6 +516,11 @@ Please provide the fixed code for all affected files.
                     "build_output": output,
                     "run_output": run_output if run_success else "Failed to run project"
                 })
+                
+                # Return all files as text with build success marker
+                all_files_content = "\n".join([f"[filename: {f}]\n{open(os.path.join(temp_dir, f)).read()}\n" for f in file_paths])
+                all_files_content += "\n# Build succeeded\n"
+                return PlainTextResponse(content=all_files_content)
             else:
                 status.update({
                     "status": "failed",
@@ -524,9 +529,5 @@ Please provide the fixed code for all affected files.
                 })
             
             save_status(temp_dir, status)
-            
-            # Return all files as text
-            all_files_content = "\n".join([f"[filename: {f}]\n{open(os.path.join(temp_dir, f)).read()}\n" for f in file_paths])
-            return PlainTextResponse(content=all_files_content)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating project: {str(e)}")
