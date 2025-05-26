@@ -650,7 +650,7 @@ Please provide the fixed code for all affected files.
                 "run_output": run_output if run_success else "Failed to run project"
             })
             
-            # Create the response content INSIDE the tempdir context
+            # Create the response content while the tempdir is still available
             all_files_content = ""
             for f in file_paths:
                 try:
@@ -662,7 +662,7 @@ Please provide the fixed code for all affected files.
                     print(f"Error reading file {f}: {e}")
             
             # Add build status
-            all_files_content += "\n# Build " + ("succeeded" if success else "failed") + "\n"
+            all_files_content += "\n# Build succeeded\n"
             
             # Return the response while still inside the context
             return PlainTextResponse(content=all_files_content)
@@ -672,7 +672,23 @@ Please provide the fixed code for all affected files.
                 "message": "Failed to generate working project",
                 "build_output": output
             })
-        
-        save_status(temp_dir, status)
+            
+            # Add a return statement here too, don't let execution continue outside the with block
+            all_files_content = ""
+            for f in file_paths:
+                try:
+                    file_path = os.path.join(temp_dir, f)
+                    if os.path.exists(file_path):
+                        with open(file_path, 'r') as file:
+                            all_files_content += f"[filename: {f}]\n{file.read()}\n\n"
+                except Exception as e:
+                    print(f"Error reading file {f}: {e}")
+            
+            # Add build status
+            all_files_content += "\n# Build failed\n"
+            
+            save_status(temp_dir, status)
+            return PlainTextResponse(content=all_files_content)
+                
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating project: {str(e)}")
