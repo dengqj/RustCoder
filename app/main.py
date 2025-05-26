@@ -569,6 +569,7 @@ edition = "2021"
 }
 """
             
+            # Write files
             file_paths = parser.write_files(files, temp_dir)
             
             status.update({
@@ -580,9 +581,6 @@ edition = "2021"
             
             # Compile the project
             success, output = compiler.build_project(temp_dir)
-            
-            # Initialize similar_errors here to avoid the "referenced before assignment" error
-            similar_errors = []
             
             if not success:
                 # Project failed to compile, try to fix errors
@@ -652,9 +650,21 @@ Please provide the fixed code for all affected files.
                 "run_output": run_output if run_success else "Failed to run project"
             })
             
-            # Return all files as text with build success marker
-            all_files_content = "\n".join([f"[filename: {f}]\n{open(os.path.join(temp_dir, f)).read()}\n" for f in file_paths])
-            all_files_content += "\n# Build succeeded\n"
+            # Create the response content INSIDE the tempdir context
+            all_files_content = ""
+            for f in file_paths:
+                try:
+                    file_path = os.path.join(temp_dir, f)
+                    if os.path.exists(file_path):
+                        with open(file_path, 'r') as file:
+                            all_files_content += f"[filename: {f}]\n{file.read()}\n\n"
+                except Exception as e:
+                    print(f"Error reading file {f}: {e}")
+            
+            # Add build status
+            all_files_content += "\n# Build " + ("succeeded" if success else "failed") + "\n"
+            
+            # Return the response while still inside the context
             return PlainTextResponse(content=all_files_content)
         else:
             status.update({
