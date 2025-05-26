@@ -142,11 +142,13 @@ async def compile_and_fix_rust(request: dict):
         return PlainTextResponse(content=output_text.strip())
     else:
         # For errors, return the JSON with detailed error information
+        # Include the combined text in both the combined_text and final_files fields
         return JSONResponse(content={
             "status": "error",
             "message": f"Failed to fix code: {result.get('build_output', '')}",
             "attempts": result.get("attempts", []),
-            "combined_text": output_text.strip()
+            "combined_text": output_text.strip(),
+            "final_files": result["final_files"]  # Include the individual files in the response
         })
 
 async def handle_project_generation(
