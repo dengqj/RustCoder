@@ -612,7 +612,7 @@ edition = "2021"
                 fix_examples = "Here are some examples of similar errors and their fixes:\n\n"
                 for i, err in enumerate(similar_errors):
                     fix_examples += f"Example {i+1}:\n{err['error']}\nFix: {err['solution']}\n\n"
-            
+        
             fix_prompt = f"""
 Here is a Rust project that failed to compile. Help me fix the compilation errors.
 
@@ -672,6 +672,8 @@ Please provide the fixed code for all affected files.
             all_files_content += "\n# Build failed\n"
         
         save_status(temp_dir, status)
+        
+        # Return the response while still inside the with block
         return PlainTextResponse(content=all_files_content)
                 
     except Exception as e:
