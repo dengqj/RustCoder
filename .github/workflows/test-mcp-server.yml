@@ -238,14 +238,14 @@ jobs:
           
           if [[ "$HTTP_CODE" == "500" ]] && [[ "$RESPONSE" == *"Invalid API Key"* ]]; then
             echo "LLM authentication error detected - this is expected with invalid API keys"
-            echo "::set-output name=status::auth_error"
+            echo "status=auth_error" >> $GITHUB_OUTPUT
             exit 0
           elif [[ "$HTTP_CODE" != "200" ]]; then
             echo "Failed to connect to API service with unexpected error"
             echo "Response: $RESPONSE"
             docker ps
             docker logs $(docker ps -q --filter name=api)
-            echo "::set-output name=status::error"
+            echo "status=error" >> $GITHUB_OUTPUT
             exit 1
           fi
           
@@ -256,12 +256,12 @@ jobs:
           if ! echo "$RESPONSE" | grep -q "\[filename:"; then
             echo "Response does not contain filename markers:"
             echo "$RESPONSE" | head -20
-            echo "::set-output name=status::error"
+            echo "status=error" >> $GITHUB_OUTPUT
             exit 1
           fi
           
           echo "Generate-sync successful! Response contains code files in text format."
-          echo "::set-output name=status::success"
+          echo "status=success" >> $GITHUB_OUTPUT
 
       - name: "Test workflow: /generate-sync → /compile"
         if: steps.test-generate-sync.outputs.status == 'success'
