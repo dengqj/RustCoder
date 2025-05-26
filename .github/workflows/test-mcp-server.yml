@@ -58,10 +58,10 @@ jobs:
           done
           echo "All containers are running."
 
-      - name: Test /mcp/compile endpoint
+      - name: Test /compile endpoint
         run: |
-          echo "Testing /mcp/compile endpoint..."
-          RESPONSE=$(curl -s -S -f -X POST http://localhost:8000/mcp/compile \
+          echo "Testing /compile endpoint..."
+          RESPONSE=$(curl -s -S -f -X POST http://localhost:8000/compile \
             -H "Content-Type: application/json" \
             -d '{
               "code": "[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    println!(\"Hello, World!\");\n}"
@@ -252,15 +252,15 @@ jobs:
           echo "First 20 lines of response:"
           echo "$RESPONSE" | head -20
 
-      - name: "Test workflow: /generate-sync → /mcp/compile"
+      - name: "Test workflow: /generate-sync → /compile"
         run: |
-          echo "Testing workflow: /generate-sync → /mcp/compile..."
+          echo "Testing workflow: /generate-sync → /compile..."
           
           # Get the output from the previous step and remove the build status comment
           GENERATE_OUTPUT=$(cat generate_output.txt | sed '/^# Build/,$d')
           
           # Pass the cleaned generated code directly to compile
-          COMPILE_RESPONSE=$(curl -s -S -f -X POST http://localhost:8000/mcp/compile \
+          COMPILE_RESPONSE=$(curl -s -S -f -X POST http://localhost:8000/compile \
             -H "Content-Type: application/json" \
             -d "{
               \"code\": $(echo "$GENERATE_OUTPUT" | jq -Rs .)
