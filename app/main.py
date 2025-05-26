@@ -490,12 +490,34 @@ async def download_project(project_id: str):
         media_type="application/zip"
     )
 
+USE_MOCK_LLM = os.getenv("USE_MOCK_LLM", "").lower() == "true"
+
 @app.post("/generate-sync")
 async def generate_project_sync(request: ProjectRequest):
     """
     Generate a Rust project synchronously and return all files in text format.
     This endpoint will wait for the full generation process to complete.
     """
+    if USE_MOCK_LLM:
+        # Return mock response
+        return """[filename: Cargo.toml]
+[package]
+name = "hello_world"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+[filename: src/main.rs]
+fn main() {
+    println!("Hello, World!");
+}
+
+[filename: README.md]
+# Hello World
+
+This is a simple Rust program that prints "Hello, World!".
+"""
     try:
         # Create temporary directory for generation
         with tempfile.TemporaryDirectory() as temp_dir:
