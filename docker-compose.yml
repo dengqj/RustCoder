@@ -6,13 +6,14 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - LLM_API_KEY=${LLM_API_KEY}
-      - LLM_API_BASE=${LLM_API_BASE:-https://coder.gaia.domains/v1}
-      - LLM_MODEL=${LLM_MODEL:-Qwen2.5-Coder-32B-Instruct-Q5_K_M}
-      - LLM_EMBED_MODEL=${LLM_EMBED_MODEL:-nomic-embed}
-      - LLM_EMBED_SIZE=${LLM_EMBED_SIZE:-768}
+      - LLM_API_KEY=dummy-key
+      - LLM_API_BASE=http://host.docker.internal:8080/v1  # This accesses your host machine from Docker
+      - LLM_MODEL=Qwen2.5-Coder-3B-Instruct
+      - LLM_EMBED_MODEL=gte-Qwen2-1.5B-instruct
+      - LLM_EMBED_SIZE=1536
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6333
+      - SKIP_VECTOR_SEARCH=true  # Add this to avoid embedding API issues
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     depends_on:
       - qdrant
