@@ -17,34 +17,33 @@ services:
     depends_on:
       - qdrant
 
-  mcp-server:
-    build: .
-    environment:
-      - MCP_TRANSPORT=sse
-      - MCP_HOST=0.0.0.0
-      - MCP_PORT=3001
-      - LLM_API_KEY=${LLM_API_KEY}
-      - QDRANT_HOST=qdrant
-      - QDRANT_PORT=6333
-    command: python -m examples.run_mcp_server
-    ports:
-      - "3001:3001"
-    volumes:
-      - .:/app
-    depends_on:
-      - qdrant
+  # Commenting out MCP services temporarily
+  # mcp-server:
+  #   build: .
+  #   environment:
+  #     - MCP_TRANSPORT=sse
+  #     - MCP_HOST=0.0.0.0
+  #     - MCP_PORT=3001
+  #     - LLM_API_KEY=${LLM_API_KEY}
+  #     - LLM_API_BASE=${LLM_API_BASE:-https://coder.gaia.domains/v1}
+  #     - LLM_MODEL=${LLM_MODEL:-Qwen2.5-Coder-32B-Instruct-Q5_K_M}
+  #     - LLM_EMBED_MODEL=${LLM_EMBED_MODEL:-nomic-embed}
+  #     - LLM_EMBED_SIZE=${LLM_EMBED_SIZE:-768}
+  #     - QDRANT_HOST=qdrant
+  #     - QDRANT_PORT=6333
+  #   command: python -m app.mcp_server
+  #   depends_on:
+  #     - qdrant
 
-  mcp-proxy:
-    build: .
-    ports:
-      - "3000:3000"
-    command: mcp-proxy http://mcp-server:3001/sse --port 3000 --host 0.0.0.0 --allow-origin="*"
-    volumes:
-      - ./mcp-proxy-config.json:/app/mcp-proxy-config.json
-    depends_on:
-      - mcp-server
-    restart: on-failure
-      
+  # mcp-proxy:
+  #   image: russellluo/mcp-proxy:0.4.0
+  #   ports:
+  #     - "3000:3000"
+  #   volumes:
+  #     - ./mcp-proxy-config.json:/app/config.json
+  #   depends_on:
+  #     - mcp-server
+
   qdrant:
     image: qdrant/qdrant
     ports:
