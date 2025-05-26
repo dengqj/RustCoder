@@ -552,7 +552,6 @@ async def generate_project_sync(request: ProjectRequest):
             
             # Ensure essential files exist
             if "Cargo.toml" not in files:
-                # Create a basic Cargo.toml if it's missing
                 project_name = request.description.lower().replace(" ", "_").replace("-", "_")[:20]
                 files["Cargo.toml"] = f"""[package]
 name = "{project_name}"
@@ -563,7 +562,6 @@ edition = "2021"
 """
             
             if "src/main.rs" not in files and "src\\main.rs" not in files:
-                # Create a basic main.rs if it's missing
                 files["src/main.rs"] = """fn main() {
     println!("Hello, world!");
 }
@@ -577,7 +575,9 @@ edition = "2021"
                 "message": "Compiling project",
                 "files": file_paths
             })
-            save_status(temp_dir, status)
+            
+            # DON'T save status here - remove this line
+            # save_status(temp_dir, status)
             
             # Compile the project
             success, output = compiler.build_project(temp_dir)
@@ -589,7 +589,9 @@ edition = "2021"
                     "message": "Compilation failed, attempting to fix",
                     "build_output": output
                 })
-                save_status(temp_dir, status)
+                
+                # DON'T save status here - remove this line
+                # save_status(temp_dir, status)
                 
                 # Extract error context
                 error_context = compiler.extract_error_context(output)
@@ -604,16 +606,15 @@ edition = "2021"
                         similar_errors = vector_store.search("error_examples", error_embedding, limit=3)
                     except Exception as e:
                         print(f"Vector search error (non-critical): {e}")
-                        # Continue without vector search results
             
-            # Generate fix prompt
-            fix_examples = ""
-            if similar_errors:
-                fix_examples = "Here are some examples of similar errors and their fixes:\n\n"
-                for i, err in enumerate(similar_errors):
-                    fix_examples += f"Example {i+1}:\n{err['error']}\nFix: {err['solution']}\n\n"
+                # Generate fix prompt
+                fix_examples = ""
+                if similar_errors:
+                    fix_examples = "Here are some examples of similar errors and their fixes:\n\n"
+                    for i, err in enumerate(similar_errors):
+                        fix_examples += f"Example {i+1}:\n{err['error']}\nFix: {err['solution']}\n\n"
         
-            fix_prompt = f"""
+                fix_prompt = f"""
 Here is a Rust project that failed to compile. Help me fix the compilation errors.
 
 Project description: {request.description}
@@ -626,55 +627,58 @@ Compilation error:
 Please provide the fixed code for all affected files.
 """
         
-            # Get fix from LLM
-            fix_response = llm_client.generate_text(fix_prompt)
+                # Get fix from LLM
+                fix_response = llm_client.generate_text(fix_prompt)
+                
+                # Parse and apply fixes
+                fixed_files = parser.parse_response(fix_response)
+                for filename, content in fixed_files.items():
+                    file_path = os.path.join(temp_dir, filename)
+                    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                    with open(file_path, 'w') as f:
+                        f.write(content)
+                    files[filename] = content  # Update the files dictionary
+                
+                # Try compiling again
+                success, output = compiler.build_project(temp_dir)
             
-            # Parse and apply fixes
-            fixed_files = parser.parse_response(fix_response)
-            for filename, content in fixed_files.items():
-                file_path = os.path.join(temp_dir, filename)
-                with open(file_path, 'w') as f:
-                    f.write(content)
+            # Create the response content while the tempdir is still available
+            all_files_content = ""
+            for f in file_paths:
+                try:
+                    file_path = os.path.join(temp_dir, f)
+                    if os.path.exists(file_path):
+                        with open(file_path, 'r') as file:
+                            all_files_content += f"[filename: {f}]\n{file.read()}\n\n"
+                except Exception as e:
+                    print(f"Error reading file {f}: {e}")
             
-            # Try compiling again
-            success, output = compiler.build_project(temp_dir)
-        
-        # Create the response content while the tempdir is still available
-        all_files_content = ""
-        for f in file_paths:
-            try:
-                file_path = os.path.join(temp_dir, f)
-                if os.path.exists(file_path):
-                    with open(file_path, 'r') as file:
-                        all_files_content += f"[filename: {f}]\n{file.read()}\n\n"
-            except Exception as e:
-                print(f"Error reading file {f}: {e}")
-        
-        if success:
-            # Project compiled successfully
-            status.update({
-                "status": "completed",
-                "message": "Project generated successfully",
-                "build_output": output
-            })
+            if success:
+                # Project compiled successfully
+                status.update({
+                    "status": "completed",
+                    "message": "Project generated successfully",
+                    "build_output": output
+                })
+                
+                # Add build status
+                all_files_content += "\n# Build succeeded\n"
+            else:
+                # Build failed
+                status.update({
+                    "status": "failed",
+                    "message": "Failed to generate working project",
+                    "build_output": output
+                })
+                
+                # Add build status
+                all_files_content += "\n# Build failed\n"
             
-            # Add build status
-            all_files_content += "\n# Build succeeded\n"
-        else:
-            # Build failed
-            status.update({
-                "status": "failed",
-                "message": "Failed to generate working project",
-                "build_output": output
-            })
+            # DON'T save status here - remove this line
+            # save_status(temp_dir, status)
             
-            # Add build status
-            all_files_content += "\n# Build failed\n"
-        
-        save_status(temp_dir, status)
-        
-        # Return the response while still inside the with block
-        return PlainTextResponse(content=all_files_content)
+            # Return the response while still inside the with block
+            return PlainTextResponse(content=all_files_content)
                 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating project: {str(e)}")
