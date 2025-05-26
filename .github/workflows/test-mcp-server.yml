@@ -49,10 +49,11 @@ jobs:
       - name: Verify container readiness
         run: |
           docker ps
-          for container in api mcp-server mcp-proxy; do
+          # Only check for API and qdrant since MCP services are commented out
+          for container in api qdrant; do
             if ! docker ps | grep -q "$container"; then
               echo "ERROR: $container is not running!"
-              docker compose logs --tail=100 "$container"
+              docker compose logs --tail=100 "$container" || echo "Could not get logs for $container"
               exit 1
             fi
           done
