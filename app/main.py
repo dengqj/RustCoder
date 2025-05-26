@@ -1,16 +1,16 @@
 import os
 import uuid
 import shutil
-import json  # Move from within functions to top level
+import json
 from typing import Dict, List, Optional
 from dotenv import load_dotenv
-import tempfile  # Import tempfile for temporary directory handling
+import tempfile
 
 # Load environment variables from .env file
 load_dotenv()
 
 from fastapi import FastAPI, BackgroundTasks, HTTPException
-from fastapi.responses import JSONResponse, PlainTextResponse  # Move from within function to top level
+from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel
 
 from app.prompt_generator import PromptGenerator
@@ -18,7 +18,8 @@ from app.response_parser import ResponseParser
 from app.compiler import RustCompiler
 from app.llm_client import LlamaEdgeClient
 from app.vector_store import QdrantStore
-from app.mcp_service import RustCompilerMCP
+# Comment out MCP import until we're ready to use it
+# from app.mcp_service import RustCompilerMCP
 
 app = FastAPI(title="Rust Project Generator API")
 
@@ -50,8 +51,8 @@ if vector_store.count("project_examples") == 0:
 if vector_store.count("error_examples") == 0:
     load_error_examples()
 
-# Initialize MCP service with vector store and LLM client
-rust_mcp = RustCompilerMCP(vector_store=vector_store, llm_client=llm_client)
+# Initialize MCP service with vector store and LLM client - commented out for now
+# rust_mcp = RustCompilerMCP(vector_store=vector_store, llm_client=llm_client)
 
 # Project generation request
 class ProjectRequest(BaseModel):
@@ -103,15 +104,50 @@ async def get_project_status(project_id: str):
         
     return ProjectResponse(**status)
 
-@app.post("/compile")  # Changed from /mcp/compile
+@app.post("/compile")
 async def compile_rust(request: dict):
-    """MCP endpoint to compile Rust code"""
+    """Endpoint to compile Rust code"""
     if "code" not in request:
         raise HTTPException(status_code=400, detail="Missing 'code' field")
     
-    return rust_mcp.compile_rust_code(request["code"])
+    # Direct implementation instead of using MCP service
+    # return rust_mcp.compile_rust_code(request["code"])
+    
+    # Create temp directory
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Parse the multi-file content
+        files = parser.parse_response(request["code"])
+        
+        # Ensure project structure
+        os.makedirs(os.path.join(temp_dir, "src"), exist_ok=True)
+        
+        # Write files
+        file_paths = parser.write_files(files, temp_dir)
+        
+        # Compile the project
+        success, output = compiler.build_project(temp_dir)
+        
+        if success:
+            # Try running if compilation succeeded
+            run_success, run_output = compiler.run_project(temp_dir)
+            
+            return {
+                "success": True,
+                "files": file_paths,
+                "build_output": output or "Build successful",
+                "run_output": run_output if run_success else "Failed to run project"
+            }
+        else:
+            # Return error details
+            error_context = compiler.extract_error_context(output)
+            return {
+                "success": False,
+                "files": file_paths,
+                "build_output": output,
+                "error_details": error_context
+            }
 
-@app.post("/compile-and-fix")  # Changed from /mcp/compile-and-fix
+@app.post("/compile-and-fix")
 async def compile_and_fix_rust(request: dict):
     """Endpoint to compile and fix Rust code"""
     if "code" not in request or "description" not in request:
@@ -126,29 +162,111 @@ async def compile_and_fix_rust(request: dict):
         code = code.replace("println!(\"", "println!(\"") 
         code = code.replace("\" //", "\"); //")
     
-    result = rust_mcp.compile_and_fix_rust_code(
-        code,
-        request["description"],
-        max_attempts=max_attempts
-    )
+    # Using direct implementation instead of MCP service
+    # result = rust_mcp.compile_and_fix_rust_code(
+    #     code,
+    #     request["description"],
+    #     max_attempts=max_attempts
+    # )
     
-    # Format as text with filename markers
-    output_text = ""
-    for filename, content in result["final_files"].items():
-        output_text += f"[filename: {filename}]\n{content}\n\n"
-    
-    # For successful fixes, return a text response with the combined code
-    if result["success"]:
-        return PlainTextResponse(content=output_text.strip())
-    else:
-        # For errors, return the JSON with detailed error information
-        # Include the combined text in both the combined_text and final_files fields
+    # Create temp directory
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Parse the multi-file content
+        files = parser.parse_response(code)
+        
+        # Ensure project structure
+        os.makedirs(os.path.join(temp_dir, "src"), exist_ok=True)
+        
+        # Write files
+        file_paths = parser.write_files(files, temp_dir)
+        
+        # Try compiling and fixing up to max_attempts
+        attempts = []
+        current_files = files.copy()
+        
+        for attempt in range(max_attempts):
+            # Compile the project
+            success, output = compiler.build_project(temp_dir)
+            
+            # Store this attempt
+            attempts.append({
+                "attempt": attempt + 1,
+                "success": success,
+                "output": output
+            })
+            
+            if success:
+                # Try running if compilation succeeded
+                run_success, run_output = compiler.run_project(temp_dir)
+                
+                # Format as text with filename markers
+                output_text = ""
+                for filename, content in current_files.items():
+                    output_text += f"[filename: {filename}]\n{content}\n\n"
+                
+                # For successful fixes, return a text response with the combined code
+                return PlainTextResponse(content=output_text.strip())
+            
+            # If we've reached max attempts without success, stop
+            if attempt == max_attempts - 1:
+                break
+                
+            # Extract error context for LLM
+            error_context = compiler.extract_error_context(output)
+            
+            # Find similar errors in vector DB (commented out for now)
+            similar_errors = []
+            try:
+                # Find similar errors in vector DB
+                error_embedding = llm_client.get_embeddings([error_context["full_error"]])[0]
+                similar_errors = vector_store.search("error_examples", error_embedding, limit=3)
+            except Exception as e:
+                print(f"Vector search error (non-critical): {e}")
+            
+            # Generate fix prompt
+            fix_examples = ""
+            if similar_errors:
+                fix_examples = "Here are some examples of similar errors and their fixes:\n\n"
+                for i, err in enumerate(similar_errors):
+                    fix_examples += f"Example {i+1}:\n{err['error']}\nFix: {err['solution']}\n\n"
+            
+            fix_prompt = f"""
+Here is a Rust project that failed to compile. Help me fix the compilation errors.
+
+Project description: {request["description"]}
+
+Compilation error:
+{error_context["full_error"]}
+
+{fix_examples}
+
+Please provide the fixed code for all affected files.
+"""
+            
+            # Get fix from LLM
+            fix_response = llm_client.generate_text(fix_prompt)
+            
+            # Parse and apply fixes
+            fixed_files = parser.parse_response(fix_response)
+            for filename, content in fixed_files.items():
+                file_path = os.path.join(temp_dir, filename)
+                os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                with open(file_path, 'w') as f:
+                    f.write(content)
+                current_files[filename] = content
+        
+        # Format as text with filename markers for error response
+        output_text = ""
+        for filename, content in current_files.items():
+            output_text += f"[filename: {filename}]\n{content}\n\n"
+        
+        # If we've exhausted all attempts, return error
         return JSONResponse(content={
             "status": "error",
-            "message": f"Failed to fix code: {result.get('build_output', '')}",
-            "attempts": result.get("attempts", []),
+            "message": f"Failed to fix code: {attempts[-1]['output']},
+            "attempts": attempts,
             "combined_text": output_text.strip(),
-            "final_files": result["final_files"]  # Include the individual files in the response
+            "final_files": current_files
         })
 
 async def handle_project_generation(
@@ -482,14 +600,14 @@ edition = "2021"
                         print(f"Vector search error (non-critical): {e}")
                         # Continue without vector search results
             
-                # Generate fix prompt
-                fix_examples = ""
-                if similar_errors:
-                    fix_examples = "Here are some examples of similar errors and their fixes:\n\n"
-                    for i, err in enumerate(similar_errors):
-                        fix_examples += f"Example {i+1}:\n{err['error']}\nFix: {err['solution']}\n\n"
-                
-                fix_prompt = f"""
+            # Generate fix prompt
+            fix_examples = ""
+            if similar_errors:
+                fix_examples = "Here are some examples of similar errors and their fixes:\n\n"
+                for i, err in enumerate(similar_errors):
+                    fix_examples += f"Example {i+1}:\n{err['error']}\nFix: {err['solution']}\n\n"
+            
+            fix_prompt = f"""
 Here is a Rust project that failed to compile. Help me fix the compilation errors.
 
 Project description: {request.description}
@@ -501,42 +619,42 @@ Compilation error:
 
 Please provide the fixed code for all affected files.
 """
+        
+            # Get fix from LLM
+            fix_response = llm_client.generate_text(fix_prompt)
             
-                # Get fix from LLM
-                fix_response = llm_client.generate_text(fix_prompt)
-                
-                # Parse and apply fixes
-                fixed_files = parser.parse_response(fix_response)
-                for filename, content in fixed_files.items():
-                    file_path = os.path.join(temp_dir, filename)
-                    with open(file_path, 'w') as f:
-                        f.write(content)
-                
-                # Try compiling again
-                success, output = compiler.build_project(temp_dir)
+            # Parse and apply fixes
+            fixed_files = parser.parse_response(fix_response)
+            for filename, content in fixed_files.items():
+                file_path = os.path.join(temp_dir, filename)
+                with open(file_path, 'w') as f:
+                    f.write(content)
             
-            if success:
-                # Project compiled successfully, try running it
-                run_success, run_output = compiler.run_project(temp_dir)
-                
-                status.update({
-                    "status": "completed",
-                    "message": "Project generated successfully",
-                    "build_output": output,
-                    "run_output": run_output if run_success else "Failed to run project"
-                })
-                
-                # Return all files as text with build success marker
-                all_files_content = "\n".join([f"[filename: {f}]\n{open(os.path.join(temp_dir, f)).read()}\n" for f in file_paths])
-                all_files_content += "\n# Build succeeded\n"
-                return PlainTextResponse(content=all_files_content)
-            else:
-                status.update({
-                    "status": "failed",
-                    "message": "Failed to generate working project",
-                    "build_output": output
-                })
+            # Try compiling again
+            success, output = compiler.build_project(temp_dir)
+        
+        if success:
+            # Project compiled successfully, try running it
+            run_success, run_output = compiler.run_project(temp_dir)
             
-            save_status(temp_dir, status)
+            status.update({
+                "status": "completed",
+                "message": "Project generated successfully",
+                "build_output": output,
+                "run_output": run_output if run_success else "Failed to run project"
+            })
+            
+            # Return all files as text with build success marker
+            all_files_content = "\n".join([f"[filename: {f}]\n{open(os.path.join(temp_dir, f)).read()}\n" for f in file_paths])
+            all_files_content += "\n# Build succeeded\n"
+            return PlainTextResponse(content=all_files_content)
+        else:
+            status.update({
+                "status": "failed",
+                "message": "Failed to generate working project",
+                "build_output": output
+            })
+        
+        save_status(temp_dir, status)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating project: {str(e)}")
