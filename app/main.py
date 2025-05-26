@@ -263,7 +263,7 @@ Please provide the fixed code for all affected files.
         # If we've exhausted all attempts, return error
         return JSONResponse(content={
             "status": "error",
-            "message": f"Failed to fix code: {attempts[-1]['output']},
+            "message": f"Failed to fix code: {attempts[-1]['output']}",
             "attempts": attempts,
             "combined_text": output_text.strip(),
             "final_files": current_files
