@@ -575,6 +575,9 @@ edition = "2021"
             # Compile the project
             success, output = compiler.build_project(temp_dir)
             
+            # Initialize similar_errors here to avoid the "referenced before assignment" error
+            similar_errors = []
+            
             if not success:
                 # Project failed to compile, try to fix errors
                 status.update({
@@ -589,7 +592,6 @@ edition = "2021"
                 
                 # Skip vector search if environment variable is set
                 skip_vector_search = os.getenv("SKIP_VECTOR_SEARCH", "").lower() == "true"
-                similar_errors = []
                 
                 if not skip_vector_search:
                     try:
