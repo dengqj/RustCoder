@@ -103,17 +103,17 @@ async def get_project_status(project_id: str):
         
     return ProjectResponse(**status)
 
-@app.post("/mcp/compile")
-async def mcp_compile_rust(request: dict):
+@app.post("/compile")  # Changed from /mcp/compile
+async def compile_rust(request: dict):
     """MCP endpoint to compile Rust code"""
     if "code" not in request:
         raise HTTPException(status_code=400, detail="Missing 'code' field")
     
     return rust_mcp.compile_rust_code(request["code"])
 
-@app.post("/mcp/compile-and-fix")
-async def mcp_compile_and_fix_rust(request: dict):
-    """MCP endpoint to compile and fix Rust code"""
+@app.post("/compile-and-fix")  # Changed from /mcp/compile-and-fix
+async def compile_and_fix_rust(request: dict):
+    """Endpoint to compile and fix Rust code"""
     if "code" not in request or "description" not in request:
         raise HTTPException(status_code=400, detail="Missing required fields")
     
@@ -125,18 +125,19 @@ async def mcp_compile_and_fix_rust(request: dict):
         max_attempts=max_attempts
     )
     
-    # If successful, return raw source code
+    # Format as text with filename markers
+    output_text = ""
+    for filename, content in result["final_files"].items():
+        output_text += f"[filename: {filename}]\n{content}\n\n"
+    
+    # For successful fixes, return a text response with the combined code
     if result["success"]:
-        # Format as raw text with filename markers
-        output_text = ""
-        for filename, content in result["final_files"].items():
-            output_text += f"[filename: {filename}]\n{content}\n\n"
-        
-        # Return as plain text
         return PlainTextResponse(content=output_text.strip())
     else:
-        # For errors, we can still return JSON
-        return result
+        # For errors, return the JSON with detailed error information
+        # Add the combined text to the response for easier client use
+        result["combined_text"] = output_text.strip()
+        return JSONResponse(content=result)
 
 async def handle_project_generation(
     project_id: str, 
@@ -415,6 +416,7 @@ async def generate_project_sync(request: ProjectRequest):
             
             # Ensure essential files exist
             if "Cargo.toml" not in files:
+                # Create a basic Cargo.toml if it's missing
                 project_name = request.description.lower().replace(" ", "_").replace("-", "_")[:20]
                 files["Cargo.toml"] = f"""[package]
 name = "{project_name}"
@@ -425,30 +427,49 @@ edition = "2021"
 """
             
             if "src/main.rs" not in files and "src\\main.rs" not in files:
+                # Create a basic main.rs if it's missing
                 files["src/main.rs"] = """fn main() {
     println!("Hello, world!");
 }
 """
             
-            # Write files
-            parser.write_files(files, temp_dir)
+            file_paths = parser.write_files(files, temp_dir)
+            
+            status.update({
+                "status": "compiling",
+                "message": "Compiling project",
+                "files": file_paths
+            })
+            save_status(temp_dir, status)
             
             # Compile the project
             success, output = compiler.build_project(temp_dir)
             
             if not success:
-                # Try to fix compilation errors
+                # Project failed to compile, try to fix errors
+                status.update({
+                    "status": "error",
+                    "message": "Compilation failed, attempting to fix",
+                    "build_output": output
+                })
+                save_status(temp_dir, status)
+                
+                # Extract error context
                 error_context = compiler.extract_error_context(output)
                 
                 # Skip vector search if environment variable is set
+                skip_vector_search = os.getenv("SKIP_VECTOR_SEARCH", "").lower() == "true"
                 similar_errors = []
+                
                 if not skip_vector_search:
                     try:
+                        # Find similar errors in vector DB
                         error_embedding = llm_client.get_embeddings([error_context["full_error"]])[0]
                         similar_errors = vector_store.search("error_examples", error_embedding, limit=3)
                     except Exception as e:
                         print(f"Vector search error (non-critical): {e}")
-                
+                        # Continue without vector search results
+            
                 # Generate fix prompt
                 fix_examples = ""
                 if similar_errors:
@@ -468,41 +489,41 @@ Compilation error:
 
 Please provide the fixed code for all affected files.
 """
-                
+            
                 # Get fix from LLM
                 fix_response = llm_client.generate_text(fix_prompt)
                 
                 # Parse and apply fixes
                 fixed_files = parser.parse_response(fix_response)
                 for filename, content in fixed_files.items():
-                    files[filename] = content  # Update our files dictionary
                     file_path = os.path.join(temp_dir, filename)
-                    os.makedirs(os.path.dirname(file_path), exist_ok=True)
                     with open(file_path, 'w') as f:
                         f.write(content)
                 
                 # Try compiling again
                 success, output = compiler.build_project(temp_dir)
             
-            # Format as raw text with filename markers
-            output_text = ""
-            for filename, content in files.items():
-                output_text += f"[filename: {filename}]\n{content}\n\n"
+            if success:
+                # Project compiled successfully, try running it
+                run_success, run_output = compiler.run_project(temp_dir)
+                
+                status.update({
+                    "status": "completed",
+                    "message": "Project generated successfully",
+                    "build_output": output,
+                    "run_output": run_output if run_success else "Failed to run project"
+                })
+            else:
+                status.update({
+                    "status": "failed",
+                    "message": "Failed to generate working project",
+                    "build_output": output
+                })
             
-            # Include build result as a comment
-            build_status = "# Build succeeded" if success else f"# Build failed\n# {output}"
-            output_text += f"{build_status}\n"
+            save_status(temp_dir, status)
             
-            # Return as plain text
-            return PlainTextResponse(content=output_text.strip())
-            
+            # Return all files as text
+            all_files_content = "\n".join([f"[filename: {f}]\n{open(os.path.join(temp_dir, f)).read()}\n" for f in file_paths])
+            return PlainTextResponse(content=all_files_content)
     except Exception as e:
-        # Return error message
-        return JSONResponse(
-            status_code=500,
-            content={"error": f"Project generation failed: {str(e)}"}
-        )
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+        raise HTTPException(status_code=500, detail=f"Error generating project: {str(e)}")
