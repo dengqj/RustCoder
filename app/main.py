@@ -335,7 +335,7 @@ async def handle_project_generation(
             # Create a basic Cargo.toml if it's missing
             project_name = description.lower().replace(" ", "_").replace("-", "_")[:20]
             files["Cargo.toml"] = f"""[package]
-# THIS IS A FALLBACK TEMPLATE - LLM generation failed
+# THIS IS A FALLBACK TEMPLATE - LLM generation failed (API key or connectivity issue)
 name = "{project_name}"
 version = "0.1.0"
 edition = "2021"
@@ -345,7 +345,7 @@ edition = "2021"
         
         if "src/main.rs" not in files and "src\\main.rs" not in files:
             # Create a basic main.rs if it's missing
-            files["src/main.rs"] = """// THIS IS A FALLBACK TEMPLATE - LLM generation failed
+            files["src/main.rs"] = """// THIS IS A FALLBACK TEMPLATE - LLM generation failed (API key or connectivity issue)
 fn main() {
     println!("Hello, world!");
 }
@@ -556,7 +556,7 @@ async def generate_project_sync(request: ProjectRequest):
             if "Cargo.toml" not in files:
                 project_name = request.description.lower().replace(" ", "_").replace("-", "_")[:20]
                 files["Cargo.toml"] = f"""[package]
-# THIS IS A FALLBACK TEMPLATE - LLM generation failed
+# THIS IS A FALLBACK TEMPLATE - LLM generation failed (API key or connectivity issue)
 name = "{project_name}"
 version = "0.1.0"
 edition = "2021"
@@ -565,7 +565,7 @@ edition = "2021"
 """
             
             if "src/main.rs" not in files and "src\\main.rs" not in files:
-                files["src/main.rs"] = """// THIS IS A FALLBACK TEMPLATE - LLM generation failed
+                files["src/main.rs"] = """// THIS IS A FALLBACK TEMPLATE - LLM generation failed (API key or connectivity issue)
 fn main() {
     println!("Hello, world!");
 }
