@@ -48,12 +48,14 @@ class LlamaEdgeClient:
         
         try:
             # Add timeout to prevent hanging on server issues
+            print(f"Calling LLM API at {self.base_url} with model {self.llm_model}")
             response = self.client.chat.completions.create(
                 model=self.llm_model,
                 messages=messages,
                 max_tokens=max_tokens,
                 temperature=temperature
             )
+            print(f"LLM response received: {response.choices[0].message.content[:100]}...")
             return response.choices[0].message.content
         except Exception as e:
             print(f"Error generating text: {str(e)}")
