@@ -18,7 +18,7 @@ from app.response_parser import ResponseParser
 from app.compiler import RustCompiler
 from app.llm_client import LlamaEdgeClient
 from app.vector_store import QdrantStore
-# Comment out MCP import until we're ready to use it
+# Remove MCP import
 # from app.mcp_service import RustCompilerMCP
 
 app = FastAPI(title="Rust Project Generator API")
@@ -51,7 +51,7 @@ if vector_store.count("project_examples") == 0:
 if vector_store.count("error_examples") == 0:
     load_error_examples()
 
-# Initialize MCP service with vector store and LLM client - commented out for now
+# Remove MCP service initialization
 # rust_mcp = RustCompilerMCP(vector_store=vector_store, llm_client=llm_client)
 
 # Project generation request
@@ -110,7 +110,7 @@ async def compile_rust(request: dict):
     if "code" not in request:
         raise HTTPException(status_code=400, detail="Missing 'code' field")
     
-    # Direct implementation instead of using MCP service
+    # Remove MCP service reference
     # return rust_mcp.compile_rust_code(request["code"])
     
     # Create temp directory
@@ -162,7 +162,7 @@ async def compile_and_fix_rust(request: dict):
         code = code.replace("println!(\"", "println!(\"") 
         code = code.replace("\" //", "\"); //")
     
-    # Using direct implementation instead of MCP service
+    # Remove MCP service reference
     # result = rust_mcp.compile_and_fix_rust_code(
     #     code,
     #     request["description"],
@@ -335,6 +335,7 @@ async def handle_project_generation(
             # Create a basic Cargo.toml if it's missing
             project_name = description.lower().replace(" ", "_").replace("-", "_")[:20]
             files["Cargo.toml"] = f"""[package]
+# THIS IS A FALLBACK TEMPLATE - LLM generation failed
 name = "{project_name}"
 version = "0.1.0"
 edition = "2021"
@@ -344,7 +345,8 @@ edition = "2021"
         
         if "src/main.rs" not in files and "src\\main.rs" not in files:
             # Create a basic main.rs if it's missing
-            files["src/main.rs"] = """fn main() {
+            files["src/main.rs"] = """// THIS IS A FALLBACK TEMPLATE - LLM generation failed
+fn main() {
     println!("Hello, world!");
 }
 """
@@ -554,6 +556,7 @@ async def generate_project_sync(request: ProjectRequest):
             if "Cargo.toml" not in files:
                 project_name = request.description.lower().replace(" ", "_").replace("-", "_")[:20]
                 files["Cargo.toml"] = f"""[package]
+# THIS IS A FALLBACK TEMPLATE - LLM generation failed
 name = "{project_name}"
 version = "0.1.0"
 edition = "2021"
@@ -562,7 +565,8 @@ edition = "2021"
 """
             
             if "src/main.rs" not in files and "src\\main.rs" not in files:
-                files["src/main.rs"] = """fn main() {
+                files["src/main.rs"] = """// THIS IS A FALLBACK TEMPLATE - LLM generation failed
+fn main() {
     println!("Hello, world!");
 }
 """
