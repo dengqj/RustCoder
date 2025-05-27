@@ -1,6 +1,6 @@
-# Rust Project Generator API
+# Rust Coder
 
-An API service that generates fully functional Rust projects from natural language descriptions. This service leverages LLMs to create Rust code, compiles it, and automatically fixes any errors.
+API and MCP services that generate fully functional Rust projects from natural language descriptions. These services leverage LLMs to create complete Rust cargo projects, compile Rust source code, and automatically fix compiler errors.
 
 ---
 
@@ -91,6 +91,113 @@ The API provides the following endpoints:
 
 ### 🎯 Generate a Project
 
+**Endpoint:** `POST /generate-sync`
+
+**Example:**
+
+```bash
+  curl -X POST http://localhost:8000/generate-sync \
+  -H "Content-Type: application/json" \
+  -d '{"description": "A command-line calculator in Rust", "requirements": "Should support addition, subtraction, multiplication, and division"}'
+```
+
+#### 📥 Request Body:
+
+```
+{
+  "description": "A command-line calculator in Rust",
+  "requirements": "Should support addition, subtraction, multiplication, and division"
+}
+```
+
+#### 📤 Response:
+
+```
+[filename: Cargo.toml]
+... ...
+
+[filename: src/main.rs]
+... ...
+```
+
+### 🛠 Compile a Project
+
+**Endpoint:** `POST /compile`
+
+**Example:**
+
+```bash
+curl -X POST http://localhost:8000/compile \
+-H "Content-Type: application/json" \
+-d '{
+  "code": "[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    println!(\"Hello, World!\");\n}"
+}'
+```
+
+#### 📥 Request Body:
+
+```
+{
+  "code": "[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    println!(\"Hello, World!\");\n}"
+}
+```
+
+#### 📤 Response:
+
+```
+{
+  "success":true,
+  "files":["Cargo.toml","src/main.rs"],
+  "build_output":"Build successful",
+  "run_output":"Hello, World!\n"
+}
+```
+
+### 🩹 Compile and fix errors 
+
+**Endpoint:** `POST /compile-and-fix`
+
+**Example:**
+
+```bash
+curl -X POST http://localhost:8000/compile-and-fix \
+-H "Content-Type: application/json" \
+-d '{
+  "code": "[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    println!(\"Hello, World!\" // Missing closing parenthesis\n}",
+  "description": "A simple hello world program",
+  "max_attempts": 3
+}'
+```
+
+#### 📥 Request Body:
+
+```
+{
+  "code": "[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    println!(\"Hello, World!\" // Missing closing parenthesis\n}",
+  "description": "A simple hello world program",
+  "max_attempts": 3
+}
+```
+     
+#### 📤 Response:
+
+```
+[filename: Cargo.toml]
+[package]
+name = "hello_world"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+[filename: src/main.rs]
+fn main() {
+    println!("Hello, World!"); // Missing closing parenthesis
+}
+```
+
+### 🎯 Generate a Project Async
+
 **Endpoint:** `POST /generate`
 
 **Example:**
@@ -143,6 +250,24 @@ curl http://localhost:8000/project/123e4567-e89b-12d3-a456-426614174000
 }
 ```
 
+### 📌 Get Generated Files
+
+**Endpoint:** `GET /project/{project_id}/files/path_to_file`
+
+**Example:**
+
+```bash
+curl http://localhost:8000/project/123e4567-e89b-12d3-a456-426614174000/files/src/main.rs
+```
+
+#### 📤 Response:
+
+```
+fn main() {
+    ... ...
+}
+```
+
 ---
 
 ## 🔧 MCP (Model-Compiler-Processor) tools
@@ -153,19 +278,14 @@ The MCP server is available via the HTTP SSE transport via the `http://localhost
 pip install cmcp
 ```
 
-### 🛠 Compile Rust Code
+### 🎯 Generate a new project
 
-**tool:** `compile`
+**tool:** `generate`
 
 #### 📥 Request example:
 
 ```bash
-cmcp http://localhost:3000 tools/call -d '{ \
-    "name": "compile", \
-    "arguments": { \
-        "code: "[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    println!(\"Hello, World!\");\n}" \
-    } \
-}'
+cmcp http://localhost:3000 tools/call name=generate arguments:='{"description": "A command-line calculator in Rust", "requirements": "Should support addition, subtraction, multiplication, and division"}'
 ```
 
 #### 📤 Response:
@@ -176,30 +296,24 @@ cmcp http://localhost:3000 tools/call -d '{ \
   "content": [
     {
       "type": "text",
-      "text": "success",
+      "text": "[filename: Cargo.toml] ... [filename: src/main.rs] ... ",
       "annotations": null
     }
   ],
   "isError": false
 }
 ```
-
 ### 🩹 Compile and Fix Rust Code
 
-**tool:** `compileAndFix`
+**tool:** `compile_and_fix`
 
-### 📥 Request example:
+#### 📥 Request example:
 
 ```bash
-cmcp http://localhost:3000 tools/call -d '{ \
-    "name": "compileAndFix", \
-    "arguments": { \
-        "code: "[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    println!(\"Hello, World!\" // Missing closing parenthesis \n}" \
-    } \
-}'
+cmcp http://localhost:3000 tools/call name=compile_and_fix arguments:='{"code": "[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    println!(\"Hello, World!\" // Missing closing parenthesis \n}" }'
 ```
 
-### 📤 Response:
+#### 📤 Response:
 
 ```json
 {
@@ -208,37 +322,6 @@ cmcp http://localhost:3000 tools/call -d '{ \
     {
       "type": "text",
       "text": "[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    println!(\"Hello, World!\"); \n}",
-      "annotations": null
-    }
-  ],
-  "isError": false
-}
-```
-
-### 🎯 Generate a new project
-
-**tool:** `generate`
-
-### 📥 Request example:
-
-```bash
-cmcp http://localhost:3000 tools/call -d '{ \
-    "name": "generate", \
-    "arguments": { \
-        "description": "A command-line calculator in Rust", "requirements": "Should support addition, subtraction, multiplication, and division" \
-    } \
-}'
-```
-
-### 📤 Response:
-
-```json
-{
-  "meta": null,
-  "content": [
-    {
-      "type": "text",
-      "text": "[filename: Cargo.toml] ... [filename: src/main.rs] ... ",
       "annotations": null
     }
   ],
@@ -295,4 +378,4 @@ Contributions are welcome! Feel free to submit a Pull Request. 🚀
 ---
 
 ## 📜 License
-Licensed under [No license]](LICENSE).
+Licensed under [GPLv3](https://www.gnu.org/licenses/gpl-3.0.en.html).
