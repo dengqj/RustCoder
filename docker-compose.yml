@@ -22,6 +22,10 @@ services:
     command: openmcp run -p 0.0.0.0:3000 -- python app/mcp_tools.py
     ports:
       - "3000:3000"
+    environment:
+      - API_HOST=api        # Use service name within Docker network
+      - API_PORT=8000
+      - MCP_TRANSPORT=sse
     depends_on:
       - api
 
