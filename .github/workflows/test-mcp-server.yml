@@ -12,11 +12,11 @@ jobs:
     runs-on: ubuntu-latest
     
     env:
-      LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
-      LLM_API_BASE: https://coder.gaia.domains/v1
-      LLM_MODEL: Qwen2.5-Coder-32B-Instruct-Q5_K_M
-      LLM_EMBED_MODEL: nomic-embed
+      LLM_API_BASE: http://localhost:8080/v1
+      LLM_MODEL: Qwen2.5-Coder-3B-Instruct-Q5_K_M  
+      LLM_EMBED_MODEL: local-embed
       LLM_EMBED_SIZE: 768
+      LLM_API_KEY: ""
       SKIP_VECTOR_SEARCH: "true"  
 
     steps:
