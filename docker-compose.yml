@@ -33,3 +33,5 @@ services:
       - "6333:6333"
     volumes:
       - ./qdrant_data:/qdrant/storage
+    environment:
+      - AUTH_DISABLED=true
