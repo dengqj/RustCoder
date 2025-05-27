@@ -270,8 +270,9 @@ jobs:
         run: |
           echo "Testing workflow: /generate-sync → /compile..."
           
-          # Check if we're working with a fallback template
-          if [[ "${steps.test-generate-sync.outputs.status}" == "fallback" ]]; then
+          # Fix the variable reference - use proper quoting and check if variable exists
+          STATUS="${steps.test-generate-sync.outputs.status:-unknown}"
+          if [[ "$STATUS" == "fallback" ]]; then
             echo "WARNING: Testing with fallback template code - LLM generation failed but continuing with tests"
           fi
           
