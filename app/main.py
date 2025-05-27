@@ -24,7 +24,8 @@ app = FastAPI(title="Rust Project Generator API")
 # Get API key from environment variable (make optional)
 api_key = os.getenv("LLM_API_KEY", "")
 # Only validate if not using local setup
-if not api_key and not os.getenv("LLM_API_BASE", "").startswith("http://localhost"):
+if not api_key and not (os.getenv("LLM_API_BASE", "").startswith("http://localhost") or 
+                        os.getenv("LLM_API_BASE", "").startswith("http://host.docker.internal")):
     raise ValueError("LLM_API_KEY environment variable not set")
 
 # Get embedding size from environment variable
