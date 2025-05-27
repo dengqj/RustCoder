@@ -284,21 +284,21 @@ jobs:
               \"code\": $(echo "$GENERATE_OUTPUT" | jq -Rs .)
             }" || echo "CURL_FAILED")
     
-    if [ "$COMPILE_RESPONSE" = "CURL_FAILED" ]; then
-      echo "Failed to connect to API service"
-      docker ps
-      exit 1
-    fi
-    
-    # Check for success in response
-    if ! echo "$COMPILE_RESPONSE" | jq -e '.success == true' > /dev/null; then
-      echo "Compilation failed:"
-      echo "$COMPILE_RESPONSE" | jq || echo "$COMPILE_RESPONSE"
-      exit 1
-    fi
-    
-    echo "Workflow test successful! Generated code compiles correctly."
-    echo "$COMPILE_RESPONSE" | jq || echo "$COMPILE_RESPONSE"
+          if [ "$COMPILE_RESPONSE" = "CURL_FAILED" ]; then
+            echo "Failed to connect to API service"
+            docker ps
+            exit 1
+          fi
+          
+          # Check for success in response
+          if ! echo "$COMPILE_RESPONSE" | jq -e '.success == true' > /dev/null; then
+            echo "Compilation failed:"
+            echo "$COMPILE_RESPONSE" | jq || echo "$COMPILE_RESPONSE"
+            exit 1
+          fi
+          
+          echo "Workflow test successful! Generated code compiles correctly."
+          echo "$COMPILE_RESPONSE" | jq || echo "$COMPILE_RESPONSE"
 
       - name: Test basic API endpoints (non-LLM)
         run: |
