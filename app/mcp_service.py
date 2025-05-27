@@ -1,3 +1,8 @@
+"""
+This file contains the core business logic for the Rust Compiler MCP service.
+Note that the API integration and HTTP endpoints are now handled by app/mcp_tools.py.
+"""
+
 import os
 import tempfile
 import shutil

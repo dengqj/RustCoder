@@ -1,3 +1,8 @@
+"""
+DEPRECATED: This file is deprecated. All MCP functionality has been moved to app/mcp_tools.py.
+This file is kept for reference purposes only and will be removed in a future release.
+"""
+
 import os
 import json
 import sys

@@ -18,8 +18,6 @@ from app.response_parser import ResponseParser
 from app.compiler import RustCompiler
 from app.llm_client import LlamaEdgeClient
 from app.vector_store import QdrantStore
-# Remove MCP import
-# from app.mcp_service import RustCompilerMCP
 
 app = FastAPI(title="Rust Project Generator API")
 
@@ -50,9 +48,6 @@ if vector_store.count("project_examples") == 0:
     load_project_examples()
 if vector_store.count("error_examples") == 0:
     load_error_examples()
-
-# Remove MCP service initialization
-# rust_mcp = RustCompilerMCP(vector_store=vector_store, llm_client=llm_client)
 
 # Project generation request
 class ProjectRequest(BaseModel):
