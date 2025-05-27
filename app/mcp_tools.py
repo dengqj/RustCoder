@@ -28,10 +28,17 @@ async def generate(description: str, requirements: str) -> str:
 async def compile_and_fix(code: str, description: str = "A Rust project", max_attempts: int = 3) -> str:
     """Compile a Rust cargo project and fix any compiler errors"""
 
-    async with httpx.AsyncClient() as client:
-        response = await client.post(f"{API_BASE_URL}/compile-and-fix", 
-                                    json={'code': code, 'description': description, 'max_attempts': max_attempts})
-        return response.text
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        try:
+            response = await client.post(
+                f"{API_BASE_URL}/compile-and-fix", 
+                json={'code': code, 'description': description, 'max_attempts': max_attempts}
+            )
+            response.raise_for_status()
+            return response.text
+        except httpx.HTTPError as e:
+            print(f"HTTP error occurred: {e}")
+            return f"Error calling compile-and-fix API: {str(e)}"
 
 @mcp.tool()
 async def compile(code: str) -> str:
