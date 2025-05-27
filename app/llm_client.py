@@ -16,18 +16,23 @@ class LlamaEdgeClient:
             model: Model name (overrides LLM_MODEL env var)
             embed_model: Embedding model name (overrides LLM_EMBED_MODEL env var)
         """
-        self.api_key = api_key or os.getenv("LLM_API_KEY")
-        if not self.api_key:
-            raise ValueError("API key is required")
-            
+        self.api_key = api_key or os.getenv("LLM_API_KEY", "")
+        
         # Use provided parameters with fallback to environment variables
         self.base_url = api_base or os.getenv("LLM_API_BASE", "http://localhost:8080/v1")
         self.llm_model = model or os.getenv("LLM_MODEL", "Qwen2.5-Coder-3B-Instruct")
-        self.llm_embed_model = embed_model or os.getenv("LLM_EMBED_MODEL", "gte-Qwen2-1.5B-instruct")  # Fixed variable name
+        self.llm_embed_model = embed_model or os.getenv("LLM_EMBED_MODEL", "gte-Qwen2-1.5B-instruct")
         
+        # Only require API key if not using a local endpoint
+        is_local_endpoint = self.base_url.startswith("http://localhost") or self.base_url.startswith("http://host.docker.internal")
+        if not self.api_key and not is_local_endpoint:
+            raise ValueError("API key is required for non-local endpoints")
+            
         # Initialize OpenAI client with custom base URL
+        # Use dummy API key for local endpoints if not provided
+        api_key_to_use = self.api_key if self.api_key else "dummy_api_key_for_local_setup"
         self.client = OpenAI(
-            api_key=self.api_key,
+            api_key=api_key_to_use,
             base_url=self.base_url
         )
         
