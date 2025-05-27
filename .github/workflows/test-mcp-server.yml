@@ -266,19 +266,17 @@ jobs:
           echo "status=success" >> $GITHUB_OUTPUT
 
       - name: "Test workflow: /generate-sync → /compile"
-        if: steps.test-generate-sync.outputs.status == 'success' || steps.test-generate-sync.outputs.status == 'fallback'
         run: |
           echo "Testing workflow: /generate-sync → /compile..."
-          
-          # Fix the variable reference - use proper quoting and check if variable exists
-          STATUS="${steps.test-generate-sync.outputs.status:-unknown}"
-          if [[ "$STATUS" == "fallback" ]]; then
+    
+          # Check if response contains fallback template
+          if grep -q "FALLBACK TEMPLATE" generate_output.txt; then
             echo "WARNING: Testing with fallback template code - LLM generation failed but continuing with tests"
           fi
-          
+    
           # Get the output from the previous step and remove the build status comment
           GENERATE_OUTPUT=$(cat generate_output.txt | sed '/^# Build/,$d')
-          
+    
           # Pass the cleaned generated code directly to compile
           COMPILE_RESPONSE=$(curl -s -S -f -X POST http://localhost:8000/compile \
             -H "Content-Type: application/json" \
@@ -286,22 +284,22 @@ jobs:
               \"code\": $(echo "$GENERATE_OUTPUT" | jq -Rs .)
             }" || echo "CURL_FAILED")
 
-          if [ "$COMPILE_RESPONSE" = "CURL_FAILED" ]; then
-            echo "Failed to connect to API service"
-            docker ps
-            docker logs $(docker ps -q --filter name=api)
-            exit 1
-          fi
-          
-          # Check for success in response
-          if ! echo "$COMPILE_RESPONSE" | jq -e '.success == true' > /dev/null; then
-            echo "Compilation failed:"
-            echo "$COMPILE_RESPONSE" | jq || echo "$COMPILE_RESPONSE"
-            exit 1
-          fi
-          
-          echo "Workflow test successful! Generated code compiles correctly."
+        if [ "$COMPILE_RESPONSE" = "CURL_FAILED" ]; then
+          echo "Failed to connect to API service"
+          docker ps
+          docker logs $(docker ps -q --filter name=api)
+          exit 1
+        fi
+        
+        # Check for success in response
+        if ! echo "$COMPILE_RESPONSE" | jq -e '.success == true' > /dev/null; then
+          echo "Compilation failed:"
           echo "$COMPILE_RESPONSE" | jq || echo "$COMPILE_RESPONSE"
+          exit 1
+        fi
+        
+        echo "Workflow test successful! Generated code compiles correctly."
+        echo "$COMPILE_RESPONSE" | jq || echo "$COMPILE_RESPONSE"
 
       - name: Test basic API endpoints (non-LLM)
         run: |
