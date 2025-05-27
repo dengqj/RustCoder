@@ -1,5 +1,5 @@
-# Base image with Python and Rust
-FROM python:3.10-slim
+# Base image with Python and Rust - Using a newer base image with modern GLIBC
+FROM python:3.11-bullseye
 
 # Install Rust toolchain
 RUN apt-get update && apt-get install -y curl build-essential && \
@@ -9,29 +9,15 @@ RUN apt-get update && apt-get install -y curl build-essential && \
 # Add cargo to PATH
 ENV PATH="/root/.cargo/bin:${PATH}"
 
-# Install openmcp proxy with robust extraction handling
-RUN ARCH=$(uname -m) && \
-    if [ "$ARCH" = "x86_64" ]; then \
-        curl -LO https://github.com/decentralized-mcp/proxy/releases/latest/download/openmcp-x86_64-unknown-linux-gnu.tgz && \
-        mkdir -p openmcp_extract && \
-        tar -xzf openmcp-x86_64-unknown-linux-gnu.tgz -C openmcp_extract && \
-        find openmcp_extract -name "openmcp" -type f -exec cp {} /usr/local/bin/ \; || \
-        echo "OpenMCP binary not found, trying alternative path" && \
-        find openmcp_extract -type f -perm -u+x -exec cp {} /usr/local/bin/openmcp \; && \
-        chmod +x /usr/local/bin/openmcp && \
-        rm -rf openmcp_extract openmcp-x86_64-unknown-linux-gnu.tgz; \
-    elif [ "$ARCH" = "aarch64" ]; then \
-        curl -LO https://github.com/decentralized-mcp/proxy/releases/latest/download/openmcp-aarch64-unknown-linux-gnu.tgz && \
-        mkdir -p openmcp_extract && \
-        tar -xzf openmcp-aarch64-unknown-linux-gnu.tgz -C openmcp_extract && \
-        find openmcp_extract -name "openmcp" -type f -exec cp {} /usr/local/bin/ \; || \
-        echo "OpenMCP binary not found, trying alternative path" && \
-        find openmcp_extract -type f -perm -u+x -exec cp {} /usr/local/bin/openmcp \; && \
-        chmod +x /usr/local/bin/openmcp && \
-        rm -rf openmcp_extract openmcp-aarch64-unknown-linux-gnu.tgz; \
-    else \
-        echo "Unsupported architecture: $ARCH" && exit 1; \
-    fi
+# Directly download and install OpenMCP from source to avoid binary compatibility issues
+RUN apt-get install -y git && \
+    git clone https://github.com/decentralized-mcp/proxy.git && \
+    cd proxy && \
+    cargo build --release && \
+    cp target/release/openmcp /usr/local/bin/ && \
+    chmod +x /usr/local/bin/openmcp && \
+    cd .. && \
+    rm -rf proxy
 
 # Set working directory
 WORKDIR /app
