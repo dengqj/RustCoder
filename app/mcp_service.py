@@ -313,3 +313,36 @@ Please provide the fixed code for all affected files.
             )
         except Exception as e:
             print(f"Failed to store error fix in vector DB: {e}")
+    
+    def _fix_errors_with_llm(self, error_output, current_files, description, project_reference=None):
+        """Use LLM to fix compilation errors"""
+        if not self.llm_client:
+            print("Warning: No LLM client available, returning original files")
+            return current_files
+        
+        try:
+            # Create prompt for error fixing
+            prompt = self.prompt_generator.generate_error_fix_prompt(
+                error_output=error_output,
+                current_files=current_files,
+                description=description,
+                project_reference=project_reference
+            )
+            
+            # Get LLM response
+            response = self.llm_client.generate_text(
+                prompt=prompt,
+                system_message="You are an expert Rust developer fixing compilation errors.",
+                max_tokens=4000,
+                temperature=0.2  # Lower temperature for more precise fixes
+            )
+            
+            # Parse response into fixed files
+            fixed_files = self.parser.parse_response(response)
+            
+            # Return the fixed files
+            return fixed_files
+        except Exception as e:
+            print(f"Error fixing with LLM: {str(e)}")
+            # Return original files if LLM fails
+            return current_files
