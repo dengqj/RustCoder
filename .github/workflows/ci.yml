@@ -1,0 +1,4 @@
+env:
+  LLM_API_BASE: "https://0x9fcf7888963793472bfcb8c14f4b6b47a7462f17.gaia.domains/v1"
+  LLM_MODEL: "Qwen2.5-Coder-3B-Instruct"
+  LLM_EMBED_MODEL: "gte-Qwen2-1.5B-instruct"
