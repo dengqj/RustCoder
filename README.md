@@ -146,10 +146,13 @@ curl -X POST http://localhost:8000/compile \
 
 ```
 {
-  "success":true,
-  "files":["Cargo.toml","src/main.rs"],
-  "build_output":"Build successful",
-  "run_output":"Hello, World!\n"
+  "success": true,
+  "files": [
+    "Cargo.toml",
+    "src/main.rs"
+  ],
+  "build_output": "Build successful",
+  "run_output": "Hello, World!\n"
 }
 ```
 
@@ -182,17 +185,28 @@ curl -X POST http://localhost:8000/compile-and-fix \
 #### 📤 Response:
 
 ```
-[filename: Cargo.toml]
-[package]
-name = "hello_world"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-
-[filename: src/main.rs]
-fn main() {
-    println!("Hello, World!"); // Missing closing parenthesis
+{
+  "success": true,
+  "attempts": [
+    {
+      "attempt": 1,
+      "success": false,
+      "output": "   Compiling hello_world v0.1.0 (/tmp/tmpk_0n65md)\nerror: mismatched closing delimiter: `}`\n --> src/main.rs:2:13\n  |\n1 | fn main() {\n  |           - closing delimiter possibly meant for this\n2 |     println!(\"Hello, World!\" // Missing closing parenthesis\n  |             ^ unclosed delimiter\n3 | }\n  | ^ mismatched closing delimiter\n\nerror: could not compile `hello_world` (bin \"hello_world\") due to 1 previous error\n"
+    },
+    {
+      "attempt": 2,
+      "success": true,
+      "output": null
+    }
+  ],
+  "final_files": {
+    "Cargo.toml": "[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]",
+    "src/main.rs": "fn main() {\n    println!(\"Hello, World!\");\n}"
+  },
+  "build_output": "Build successful",
+  "run_output": "Hello, World!\n",
+  "similar_project_used": false,
+  "combined_text": "[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    println!(\"Hello, World!\");\n}"
 }
 ```
 
