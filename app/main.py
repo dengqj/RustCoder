@@ -18,6 +18,7 @@ from app.response_parser import ResponseParser
 from app.compiler import RustCompiler
 from app.llm_client import LlamaEdgeClient
 from app.vector_store import QdrantStore
+from app.mcp_service import RustCompilerMCP
 
 app = FastAPI(title="Rust Project Generator API")
 
@@ -64,6 +65,16 @@ class ProjectResponse(BaseModel):
     files: Optional[List[str]] = None
     build_output: Optional[str] = None
     run_output: Optional[str] = None
+
+# Add the CompileAndFixRequest model
+class CompileAndFixRequest(BaseModel):
+    code: str
+    description: str
+    max_attempts: int = 3
+
+# Define the get_vector_store function
+def get_vector_store():
+    return vector_store
 
 @app.post("/generate", response_model=ProjectResponse)
 async def generate_project(request: ProjectRequest, background_tasks: BackgroundTasks):
@@ -143,6 +154,31 @@ async def compile_rust(request: dict):
                 "build_output": output,
                 "error_details": error_context
             }
+
+@app.post("/compile-and-fix")
+async def compile_and_fix(request: CompileAndFixRequest):
+    """Compile Rust code and fix errors with LLM"""
+    code = request.code
+    description = request.description
+    max_attempts = request.max_attempts
+    
+    # Create MCP service instance
+    mcp_service = RustCompilerMCP(
+        vector_store=get_vector_store(),
+        llm_client=llm_client,
+        compiler=compiler,
+        parser=parser,
+        prompt_generator=prompt_gen
+    )
+    
+    # Compile and fix code
+    result = mcp_service.compile_and_fix_rust_code(
+        code_content=code,
+        description=description,
+        max_attempts=max_attempts
+    )
+    
+    return result
 
 @app.post("/compile-and-fix")
 async def compile_and_fix_rust(request: dict):
