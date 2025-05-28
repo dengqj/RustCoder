@@ -165,10 +165,7 @@ async def compile_and_fix(request: CompileAndFixRequest):
     # Create MCP service instance
     mcp_service = RustCompilerMCP(
         vector_store=get_vector_store(),
-        llm_client=llm_client,
-        compiler=compiler,
-        parser=parser,
-        prompt_generator=prompt_gen
+        llm_client=llm_client
     )
     
     # Compile and fix code
