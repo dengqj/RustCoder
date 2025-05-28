@@ -8,14 +8,7 @@ class LlamaEdgeClient:
     """Client for interacting with LlamaEdge OpenAI-compatible API"""
     
     def __init__(self, api_key=None, api_base=None, model=None, embed_model=None):
-        """Initialize LlamaEdgeClient with API credentials
-        
-        Args:
-            api_key: API key for LLM service
-            api_base: Base URL for API (overrides LLM_API_BASE env var)
-            model: Model name (overrides LLM_MODEL env var)
-            embed_model: Embedding model name (overrides LLM_EMBED_MODEL env var)
-        """
+        """Initialize LlamaEdgeClient with API credentials"""
         self.api_key = api_key or os.getenv("LLM_API_KEY", "")
         
         # Use provided parameters with fallback to environment variables
@@ -26,7 +19,7 @@ class LlamaEdgeClient:
         # Only require API key if not using a local endpoint
         is_local_endpoint = self.base_url.startswith("http://localhost") or self.base_url.startswith("http://host.docker.internal")
         if not self.api_key and not is_local_endpoint:
-            raise ValueError("API key is required for non-local endpoints")
+            raise ValueError("API key is required")
             
         # Initialize OpenAI client with custom base URL
         # Use dummy API key for local endpoints if not provided
