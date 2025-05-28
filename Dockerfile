@@ -10,14 +10,17 @@ RUN apt-get update && apt-get install -y curl build-essential && \
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Directly download and install OpenMCP from source to avoid binary compatibility issues
-RUN apt-get install -y git && \
-    git clone https://github.com/decentralized-mcp/proxy.git && \
-    cd proxy && \
-    cargo build --release && \
-    cp target/release/openmcp /usr/local/bin/ && \
-    chmod +x /usr/local/bin/openmcp && \
-    cd .. && \
-    rm -rf proxy
+# RUN apt-get install -y git && \
+#     git clone https://github.com/decentralized-mcp/proxy.git && \
+#     cd proxy && \
+#     cargo build --release && \
+#     cp target/release/openmcp /usr/local/bin/ && \
+#     chmod +x /usr/local/bin/openmcp && \
+#     cd .. && \
+#     rm -rf proxy
+
+# Install openmcp proxy via the installer
+RUN curl -sSfL 'https://raw.githubusercontent.com/decentralized-mcp/proxy/refs/heads/master/install.sh' | bash
 
 # Set working directory
 WORKDIR /app
