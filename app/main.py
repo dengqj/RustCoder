@@ -175,6 +175,13 @@ async def compile_and_fix(request: CompileAndFixRequest):
         max_attempts=max_attempts
     )
     
+    # Add combined_text field with the entire project in flat text format
+    combined_text = ""
+    for filename, content in result["final_files"].items():
+        combined_text += f"[filename: {filename}]\n{content}\n\n"
+    
+    result["combined_text"] = combined_text.strip()
+    
     return result
 
 @app.post("/compile-and-fix")
