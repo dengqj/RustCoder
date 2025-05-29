@@ -384,6 +384,13 @@ jobs:
         with:
           python-version: '3.10'
       
+      # Add Rust setup - this was missing
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          
       - name: Install jq and curl
         run: sudo apt-get install -y jq curl
         
@@ -399,8 +406,20 @@ jobs:
       - name: Start API server with external LLM
         run: |
           echo "Starting API server with external Gaia node..."
-          python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          # Redirect output to log file for debugging
+          python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 > server.log 2>&1 &
+          SERVER_PID=$!
+          echo "Server started with PID: $SERVER_PID"
           sleep 10  # Give the server time to start
+          
+          # Check if server process is still running
+          if ps -p $SERVER_PID > /dev/null; then
+            echo "Server process is running"
+          else
+            echo "Server process died. Check server logs:"
+            cat server.log
+            exit 1
+          fi
       
       - name: Verify API server is running
         run: |
@@ -408,6 +427,8 @@ jobs:
           if [[ "$HTTP_CODE" != "200" ]]; then
             echo "API server is not running properly. Status code: $HTTP_CODE"
             ps aux | grep uvicorn
+            echo "Server logs:"
+            cat server.log
             exit 1
           fi
           echo "API server is running correctly"
