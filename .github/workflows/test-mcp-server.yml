@@ -355,3 +355,241 @@ jobs:
         run: |
           echo "Checking Docker logs for troubleshooting..."
           docker compose logs || echo "Failed to get logs"
+
+  test-with-external-llm:
+    runs-on: ubuntu-latest
+    needs: test  # Run after the local tests complete
+    
+    env:
+      LLM_API_BASE: "https://0x9fcf7888963793472bfcb8c14f4b6b47a7462f17.gaia.domains/v1"
+      LLM_MODEL: "Qwen2.5-Coder-3B-Instruct"
+      LLM_EMBED_MODEL: "gte-Qwen2-1.5B-instruct"
+      LLM_EMBED_SIZE: "1536"
+      LLM_API_KEY: ""  # No API key needed for this public node
+      SKIP_VECTOR_SEARCH: "true"
+
+    services:
+      qdrant:
+        image: qdrant/qdrant:latest
+        ports:
+          - 6333:6333
+          - 6334:6334
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4.2.2
+
+      - name: Install Python and dependencies
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      - name: Install jq and curl
+        run: sudo apt-get install -y jq curl
+        
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Create test directories
+        run: |
+          mkdir -p output
+          mkdir -p data/project_examples
+          mkdir -p data/error_examples
+
+      - name: Start API server with external LLM
+        run: |
+          echo "Starting API server with external Gaia node..."
+          python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          sleep 10  # Give the server time to start
+      
+      - name: Verify API server is running
+        run: |
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/docs || echo "CURL_FAILED")
+          if [[ "$HTTP_CODE" != "200" ]]; then
+            echo "API server is not running properly. Status code: $HTTP_CODE"
+            ps aux | grep uvicorn
+            exit 1
+          fi
+          echo "API server is running correctly"
+
+      - name: Test /compile endpoint with external LLM
+        run: |
+          echo "Testing /compile endpoint..."
+          RESPONSE=$(curl -s -S -f -X POST http://localhost:8000/compile \
+            -H "Content-Type: application/json" \
+            -d '{
+              "code": "[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    println!(\"Hello, World!\");\n}"
+            }' || echo "CURL_FAILED")
+
+          if [ "$RESPONSE" = "CURL_FAILED" ]; then
+            echo "Failed to connect to API service"
+            exit 1
+          fi
+          
+          # Check for success in response
+          if ! echo "$RESPONSE" | jq -e '.success == true' > /dev/null; then
+            echo "Compilation failed:"
+            echo "$RESPONSE" | jq || echo "$RESPONSE"
+            exit 1
+          fi
+          
+          echo "Compilation successful with external LLM!"
+          echo "$RESPONSE" | jq || echo "$RESPONSE"
+
+      - name: Test /compile-and-fix endpoint with external LLM
+        run: |
+          echo "Testing /compile-and-fix endpoint..."
+          RESPONSE=$(curl -s -S -f -X POST http://localhost:8000/compile-and-fix \
+            -H "Content-Type: application/json" \
+            -d '{
+              "code": "[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    println!(\"Hello, World!\" // Missing closing parenthesis\n}",
+              "description": "A simple hello world program",
+              "max_attempts": 3
+            }' || echo "CURL_FAILED")
+
+          if [ "$RESPONSE" = "CURL_FAILED" ]; then
+            echo "Failed to connect to API service"
+            exit 1
+          fi
+          
+          # Save full response for debugging
+          echo "$RESPONSE" > compile_fix_response.txt
+          
+          # Check if response is JSON or text format
+          if [[ "$RESPONSE" == {* ]]; then
+            # JSON response (likely error)
+            echo "Got JSON response (may be expected with external LLM):"
+            echo "$RESPONSE" | jq || echo "$RESPONSE"
+          else
+            # Text response (success case)
+            echo "Compile and fix successful with external LLM! Got text response with fixed code."
+          fi
+
+      - name: Test /generate-sync with external LLM
+        id: test-generate-sync-external
+        continue-on-error: true
+        run: |
+          echo "Testing /generate-sync endpoint with external LLM..."
+          RESPONSE=$(curl -X POST http://localhost:8000/generate-sync \
+            -H "Content-Type: application/json" \
+            -d '{"description": "A simple command-line calculator in Rust", "requirements": "Should support addition, subtraction, multiplication, and division"}')
+        
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:8000/generate-sync \
+            -H "Content-Type: application/json" \
+            -d '{"description": "A simple command-line calculator in Rust", "requirements": "Should support addition, subtraction, multiplication, and division"}')
+            
+          echo "HTTP response code: $HTTP_CODE"
+          
+          if [[ "$HTTP_CODE" != "200" ]]; then
+            echo "External LLM generation failed with code $HTTP_CODE"
+            echo "Response: $RESPONSE"
+            echo "status=error" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+          # Save response to file for later use
+          echo "$RESPONSE" > external_generate_output.txt
+          
+          # Verify the response format has filename markers
+          if ! echo "$RESPONSE" | grep -q "\[filename:"; then
+            echo "Response does not contain filename markers:"
+            echo "$RESPONSE" | head -20
+            echo "status=error" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+          # Check if this is a fallback template
+          if echo "$RESPONSE" | grep -q "THIS IS A FALLBACK TEMPLATE - LLM generation failed"; then
+            echo "WARNING: Response contains fallback template - external LLM generation failed"
+            echo "status=fallback" >> $GITHUB_OUTPUT
+          else
+            echo "External LLM generate-sync successful! Response contains code files in text format."
+            echo "status=success" >> $GITHUB_OUTPUT
+          fi
+
+      - name: "Test workflow with external LLM: /generate-sync → /compile"
+        if: steps.test-generate-sync-external.outcome == 'success'
+        run: |
+          echo "Testing workflow with external LLM: /generate-sync → /compile..."
+    
+          # Check if response contains fallback template
+          if grep -q "FALLBACK TEMPLATE" external_generate_output.txt; then
+            echo "WARNING: Testing with fallback template code - external LLM generation failed but continuing with tests"
+          fi
+    
+          # Get the output from the previous step and remove the build status comment
+          GENERATE_OUTPUT=$(cat external_generate_output.txt | sed '/^# Build/,$d')
+    
+          # Pass the cleaned generated code directly to compile
+          COMPILE_RESPONSE=$(curl -s -S -f -X POST http://localhost:8000/compile \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"code\": $(echo "$GENERATE_OUTPUT" | jq -Rs .)
+            }" || echo "CURL_FAILED")
+    
+          if [ "$COMPILE_RESPONSE" = "CURL_FAILED" ]; then
+            echo "Failed to connect to API service"
+            exit 1
+          fi
+          
+          # Check for success in response
+          if ! echo "$COMPILE_RESPONSE" | jq -e '.success == true' > /dev/null; then
+            echo "Compilation failed:"
+            echo "$COMPILE_RESPONSE" | jq || echo "$COMPILE_RESPONSE"
+            exit 1
+          fi
+          
+          echo "External LLM workflow test successful! Generated code compiles correctly."
+          echo "$COMPILE_RESPONSE" | jq || echo "$COMPILE_RESPONSE"
+
+      - name: Test /generate endpoint with external LLM
+        continue-on-error: true
+        run: |
+          echo "Testing /generate endpoint with external LLM..."
+          
+          # Generate the project
+          RESPONSE=$(curl -s -S -f -X POST http://localhost:8000/generate \
+            -H "Content-Type: application/json" \
+            -d '{
+              "description": "A Rust program that converts between different units of measurement",
+              "requirements": "Support length (m, cm, inch, feet), weight (kg, g, lb), and temperature (C, F, K)"
+            }' || echo "CURL_FAILED")
+
+          if [ "$RESPONSE" = "CURL_FAILED" ]; then
+            echo "Failed to connect to API service"
+            exit 1
+          fi
+          
+          # Extract project_id from response
+          PROJECT_ID=$(echo "$RESPONSE" | jq -r '.project_id')
+          echo "Project ID: $PROJECT_ID"
+          
+          # Poll for project completion (maximum 6 attempts, 20 seconds apart)
+          echo "Polling for project completion..."
+          for i in {1..6}; do
+            echo "Checking project status (attempt $i)..."
+            STATUS_RESPONSE=$(curl -s -S -f "http://localhost:8000/project/$PROJECT_ID" || echo "CURL_FAILED")
+            
+            if [ "$STATUS_RESPONSE" = "CURL_FAILED" ]; then
+              echo "Failed to get project status"
+              continue
+            fi
+            
+            STATUS=$(echo "$STATUS_RESPONSE" | jq -r '.status')
+            echo "Current status: $STATUS"
+            
+            if [ "$STATUS" = "completed" ] || [ "$STATUS" = "failed" ]; then
+              echo "Project generation finished with status: $STATUS"
+              echo "$STATUS_RESPONSE" | jq
+              break
+            fi
+            
+            # If still processing, wait and try again
+            if [ $i -eq 6 ]; then
+              echo "Project generation taking too long, but this is acceptable for testing"
+              break
+            fi
+            
+            echo "Waiting 20 seconds before next check..."
+            sleep 20
+          done
