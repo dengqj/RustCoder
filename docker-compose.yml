@@ -24,7 +24,7 @@ services:
     environment:
       - API_HOST=api        # Use service name within Docker network
       - API_PORT=8000
-      - MCP_TRANSPORT=sse
+      - MCP_TRANSPORT=stdio # We use openmcp to map the STDIO MCP server to SSE on our desired port
     depends_on:
       - api
 
