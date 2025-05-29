@@ -406,6 +406,13 @@ jobs:
       - name: Start API server with external LLM
         run: |
           echo "Starting API server with external Gaia node..."
+          # Set USE_MOCK_LLM=true in environment for this command
+          export USE_MOCK_LLM=true
+          
+          # Add debug output to see what's being used
+          echo "LLM_API_BASE: $LLM_API_BASE"
+          echo "USE_MOCK_LLM: $USE_MOCK_LLM"
+          
           # Redirect output to log file for debugging
           python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 > server.log 2>&1 &
           SERVER_PID=$!
