@@ -409,9 +409,13 @@ jobs:
           # Set USE_MOCK_LLM=true in environment for this command
           export USE_MOCK_LLM=true
           
+          # Add a dummy API key for the public node to bypass validation
+          export LLM_API_KEY="dummy_key_for_public_node"
+          
           # Add debug output to see what's being used
           echo "LLM_API_BASE: $LLM_API_BASE"
           echo "USE_MOCK_LLM: $USE_MOCK_LLM"
+          echo "LLM_API_KEY is set to a dummy value for the public node"
           
           # Redirect output to log file for debugging
           python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 > server.log 2>&1 &
