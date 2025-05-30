@@ -437,15 +437,24 @@ Process repeats until successful or max attempts reached
 ---
 
 ## 🤝 Contributing
-Contributions are welcome! Feel free to submit a Pull Request.
+Contributions are welcome! This project uses the Developer Certificate of Origin (DCO) to certify that contributors have the right to submit their code. Follow these steps:
 
 Fork the repository
 Create your feature branch (git checkout -b feature/amazing-feature)
-Commit your changes (git commit -m 'Add some amazing feature')
+Make your changes
+Commit your changes with a sign-off (git commit -s -m 'Add some amazing feature')
 Push to the branch (git push origin feature/amazing-feature)
 Open a Pull Request
+
+The -s flag will automatically add a signed-off-by line to your commit message:
+```
+Signed-off-by: Your Name <your.email@example.com>
+```
+
+This certifies that you wrote or have the right to submit the code you're contributing according to the Developer Certificate of Origin.
 
 ---
 
 ## 📜 License
 Licensed under [GPLv3](https://www.gnu.org/licenses/gpl-3.0.en.html).
+
