@@ -451,7 +451,7 @@ The -s flag will automatically add a signed-off-by line to your commit message:
 Signed-off-by: Your Name <your.email@example.com>
 ```
 
-This certifies that you wrote or have the right to submit the code you're contributing according to the Developer Certificate of Origin.
+This certifies that you wrote or have the right to submit the code you're contributing according to the Developer Certificate of Origin. 
 
 ---
 
