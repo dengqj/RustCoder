@@ -46,7 +46,12 @@ fn main() {
         try:
             response = await client.post(f"{API_BASE_URL}/generate-sync", json={'description': description, 'requirements': requirements})
             response.raise_for_status()
-            return response.text
+
+            resp_json = json.loads(response.text)
+            if "combined_text" in resp_json:
+                return resp_json["combined_text"]
+            else:
+                return "Rust project creation error."
         except httpx.HTTPError as e:
             print(f"HTTP error occurred: {e}")
             return f"Error trying to generate a Rust project: {str(e)}"
@@ -84,7 +89,7 @@ fn main() {
             
             resp_json = json.loads(response.text)
             if "combined_text" in resp_json:
-                return ["combined_text"]
+                return resp_json["combined_text"]
             else:
                 return "Cannot fix the Rust compiler error."
             # return response.text
@@ -122,7 +127,7 @@ fn main() {
             
             resp_json = json.loads(response.text)
             if "build_output" in resp_json:
-                return ["build_output"]
+                return resp_json["build_output"]
             else:
                 return "Rust compiler error."
         except httpx.HTTPError as e:
