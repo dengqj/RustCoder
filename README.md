@@ -440,6 +440,33 @@ Process repeats until successful or max attempts reached
 
 The system uses vector embeddings to find similar projects and error examples, which helps improve code generation quality. Here's how to add your own examples:
 
+### 🔧 Creating Vector Collections
+
+First, you need to create the necessary collections in Qdrant using these curl commands:
+
+```bash
+# Create project_examples collection with 1536 dimensions (default)
+curl -X PUT "http://localhost:6333/collections/project_examples" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vectors": {
+      "size": 1536,
+      "distance": "Cosine"
+    }
+  }'
+
+# Create error_examples collection with 1536 dimensions (default)
+curl -X PUT "http://localhost:6333/collections/error_examples" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vectors": {
+      "size": 1536,
+      "distance": "Cosine"
+    }
+  }'
+```
+Note: If you've configured a different embedding size via ```LLM_EMBED_SIZE``` environment variable, replace 1536 with that value.
+
 ### Method 1: Using Python API Directly
 
 ```python
@@ -470,16 +497,50 @@ vector_store.add_item(
 )
 ```
 
+For Error Examples:
+```python
+from app.llm_client import LlamaEdgeClient
+from app.vector_store import QdrantStore
+
+# Initialize the components
+llm_client = LlamaEdgeClient()
+vector_store = QdrantStore()
+
+# Ensure collection exists
+vector_store.create_collection("error_examples")
+
+# 1. Prepare your error data
+error_data = {
+    "error": "error[E0502]: cannot borrow `*self` as mutable because it is also borrowed as immutable",
+    "solution": "Ensure mutable and immutable borrows don't overlap by using separate scopes",
+    "context": "This error occurs when you try to borrow a value mutably while an immutable borrow exists"
+}
+
+# 2. Get embedding for the error message
+embedding = llm_client.get_embeddings([error_data["error"]])[0]
+
+# 3. Add to vector database
+vector_store.add_item(
+    collection_name="error_examples",
+    vector=embedding,
+    item=error_data
+)
+```
+
 ### Method 2: Adding Multiple Examples from JSON Files
 Place JSON files in the appropriate directories:
 
 Project examples: ```project_examples```
 Error examples: ```error_examples```
-Format for project examples:
-```
+Format for project examples (with optional project_files field):
+```json
 {
   "query": "Description of the project",
-  "example": "Full example code or description"
+  "example": "Full example code or description",
+  "project_files": {
+    "src/main.rs": "// File content here",
+    "Cargo.toml": "// File content here"
+  }
 }
 ```
 Format for error examples:
@@ -487,7 +548,8 @@ Format for error examples:
 {
   "error": "Rust compiler error message",
   "solution": "How to fix the error",
-  "context": "Additional explanation (optional)"
+  "context": "Additional explanation (optional)",
+  "example": "// Code example showing the fix (optional)"
 }
 ```
 Then run the data loading script:
@@ -504,6 +566,20 @@ Run the script:
 ```
 python parse_and_save_qna.py
 ```
+
+## ⚙️ Environment Variables for Vector Search
+The SKIP_VECTOR_SEARCH environment variable controls whether the system uses vector search:
+
+```SKIP_VECTOR_SEARCH```=true - Disables vector search functionality
+```SKIP_VECTOR_SEARCH```=false (or not set) - Enables vector search
+In your current .env file, you have:
+```
+SKIP_VECTOR_SEARCH=true
+```
+This means vector search is currently disabled. To enable it:
+- Change this value to false or remove the line completely
+- Ensure you have a running Qdrant instance (via Docker Compose or standalone)
+- Create the collections as shown above
 
 ## 🤝 Contributing
 Contributions are welcome! This project uses the Developer Certificate of Origin (DCO) to certify that contributors have the right to submit their code. Follow these steps:
