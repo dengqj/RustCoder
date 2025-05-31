@@ -4,6 +4,9 @@ from typing import Dict, List, Optional, Any
 from qdrant_client import QdrantClient
 from qdrant_client.http import models as qmodels
 from qdrant_client import models  # Add this import
+from glob import glob
+import json
+from app.llm_client import LlamaEdgeClient  # Adjust the import based on your project structure
 
 class QdrantStore:
     """Interface for Qdrant vector database"""
@@ -55,9 +58,9 @@ class QdrantStore:
                         metadata: List[Dict[str, Any]]):
         """Insert documents with embeddings and metadata into collection"""
         points = []
-        for i, (embedding, meta) in enumerate(zip(embeddings, metadata)):
+        for embedding, meta in zip(embeddings, metadata):
             points.append(models.PointStruct(
-                id=i,
+                id=str(uuid.uuid4()),  # Using UUID instead of index
                 vector=embedding,
                 payload=meta
             ))
@@ -122,3 +125,32 @@ class QdrantStore:
         except Exception as e:
             print(f"Error getting count for collection {collection_name}: {e}")
             return 0
+
+def load_project_examples():
+    """Load project examples into vector database"""
+    vector_store = QdrantStore()
+    llm_client = LlamaEdgeClient()
+    
+    # Ensure collections exist
+    vector_store.create_collection("project_examples")
+    
+    example_files = glob("data/project_examples/*.json")
+    
+    embeddings = []
+    metadata = []
+    
+    for file_path in example_files:
+        with open(file_path, 'r') as f:
+            example = json.load(f)
+        
+        # Get embedding for query
+        embedding = llm_client.get_embeddings([example["query"]])[0]
+        
+        embeddings.append(embedding)
+        metadata.append(example)
+        
+        print(f"Loaded project example: {example['query']}")
+    
+    # Insert all documents in a single batch
+    if embeddings:
+        vector_store.insert_documents("project_examples", embeddings, metadata)
