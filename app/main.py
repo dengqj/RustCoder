@@ -18,7 +18,6 @@ from app.response_parser import ResponseParser
 from app.compiler import RustCompiler
 from app.llm_client import LlamaEdgeClient
 from app.vector_store import QdrantStore
-from app.mcp_service import RustCompilerMCP
 
 app = FastAPI(title="Rust Project Generator API")
 
@@ -118,9 +117,6 @@ async def compile_rust(request: dict):
     if "code" not in request:
         raise HTTPException(status_code=400, detail="Missing 'code' field")
     
-    # Remove MCP service reference
-    # return rust_mcp.compile_rust_code(request["code"])
-    
     # Create temp directory
     with tempfile.TemporaryDirectory() as temp_dir:
         # Parse the multi-file content
@@ -156,35 +152,6 @@ async def compile_rust(request: dict):
             }
 
 @app.post("/compile-and-fix")
-async def compile_and_fix(request: CompileAndFixRequest):
-    """Compile Rust code and fix errors with LLM"""
-    code = request.code
-    description = request.description
-    max_attempts = request.max_attempts
-    
-    # Create MCP service instance
-    mcp_service = RustCompilerMCP(
-        vector_store=get_vector_store(),
-        llm_client=llm_client
-    )
-    
-    # Compile and fix code
-    result = mcp_service.compile_and_fix_rust_code(
-        code_content=code,
-        description=description,
-        max_attempts=max_attempts
-    )
-    
-    # Add combined_text field with the entire project in flat text format
-    combined_text = ""
-    for filename, content in result["final_files"].items():
-        combined_text += f"[filename: {filename}]\n{content}\n\n"
-    
-    result["combined_text"] = combined_text.strip()
-    
-    return result
-
-@app.post("/compile-and-fix")
 async def compile_and_fix_rust(request: dict):
     """Endpoint to compile and fix Rust code"""
     if "code" not in request or "description" not in request:
@@ -195,16 +162,9 @@ async def compile_and_fix_rust(request: dict):
     # Pre-process code to fix common syntax errors
     code = request["code"]
     # Fix missing parenthesis in println! macro
-    if "println!(" in code and ");" not in code:
-        code = code.replace("println!(\"", "println!(\"") 
-        code = code.replace("\" //", "\"); //")
-    
-    # Remove MCP service reference
-    # result = rust_mcp.compile_and_fix_rust_code(
-    #     code,
-    #     request["description"],
-    #     max_attempts=max_attempts
-    # )
+    # if "println!(" in code and ");" not in code:
+    #     code = code.replace("println!(\"", "println!(\"") 
+    #     code = code.replace("\" //", "\"); //")
     
     # Create temp directory
     with tempfile.TemporaryDirectory() as temp_dir:
