@@ -436,6 +436,75 @@ Process repeats until successful or max attempts reached
 
 ---
 
+## 📊 Adding to the Vector Database
+
+The system uses vector embeddings to find similar projects and error examples, which helps improve code generation quality. Here's how to add your own examples:
+
+### Method 1: Using Python API Directly
+
+```python
+from app.llm_client import LlamaEdgeClient
+from app.vector_store import QdrantStore
+
+# Initialize the components
+llm_client = LlamaEdgeClient()
+vector_store = QdrantStore()
+
+# Ensure collections exist
+vector_store.create_collection("project_examples")  # or "error_examples"
+
+# 1. Prepare your data
+project_data = {
+    "query": "A command-line calculator in Rust",
+    "example": "Your full project example with code here..."
+}
+
+# 2. Get embedding for the query text
+embedding = llm_client.get_embeddings([project_data["query"]])[0]
+
+# 3. Add to vector database
+vector_store.add_item(
+    collection_name="project_examples",
+    vector=embedding,
+    item=project_data
+)
+```
+
+### Method 2: Adding Multiple Examples from JSON Files
+Place JSON files in the appropriate directories:
+
+Project examples: ```project_examples```
+Error examples: ```error_examples```
+Format for project examples:
+```
+{
+  "query": "Description of the project",
+  "example": "Full example code or description"
+}
+```
+Format for error examples:
+```
+{
+  "error": "Rust compiler error message",
+  "solution": "How to fix the error",
+  "context": "Additional explanation (optional)"
+}
+```
+Then run the data loading script:
+```
+python -c "from app.load_data import load_project_examples, load_error_examples; load_project_examples(); load_error_examples()"
+```
+
+### Method 3: Using the ```parse_and_save_qna.py``` Script
+For bulk importing from a Q&A format text file:
+
+Place your Q&A pairs in a text file with format similar to ```QnA_pair.txt```
+Modify the ```parse_and_save_qna.py``` script to point to your file
+Run the script:
+```
+python parse_and_save_qna.py
+```
+
 ## 🤝 Contributing
 Contributions are welcome! This project uses the Developer Certificate of Origin (DCO) to certify that contributors have the right to submit their code. Follow these steps:
 
@@ -457,4 +526,7 @@ This certifies that you wrote or have the right to submit the code you're contri
 
 ## 📜 License
 Licensed under [GPLv3](https://www.gnu.org/licenses/gpl-3.0.en.html).
+
+
+
 
