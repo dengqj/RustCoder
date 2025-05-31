@@ -204,9 +204,9 @@ async def compile_and_fix_rust(request: dict):
                 for filename, content in current_files.items():
                     output_text += f"[filename: {filename}]\n{content}\n\n"
                 
-                # Return JSON response instead of plain text
+                # Replace the existing JSONResponse in the success case with this
                 return JSONResponse(content={
-                    "status": "success",
+                    "success": True,
                     "message": "Code fixed and compiled successfully",
                     "attempts": attempts,
                     "combined_text": output_text.strip(),
@@ -281,7 +281,7 @@ Please provide the fixed code for all affected files.
         
         # If we've exhausted all attempts, return error
         return JSONResponse(content={
-            "status": "failed",
+            "success": False,
             "message": f"Failed to fix code after {max_attempts} attempts",
             "attempts": attempts,
             "combined_text": output_text.strip(),
