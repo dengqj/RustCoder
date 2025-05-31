@@ -1,0 +1,6 @@
+{
+  "error": "error[E0277]: the trait bound `T: std::fmt::Display` is not satisfied",
+  "context": "This error occurs when trying to use a generic type without specifying that it needs to implement a required trait",
+  "solution": "Add the necessary trait bound to the generic type parameter",
+  "example": "// Before (error)\nfn print_item<T>(item: T) {\n    println!(\"{}\", item);\n}\n\n// After (fixed)\nfn print_item<T: std::fmt::Display>(item: T) {\n    println!(\"{}\", item);\n}"
+}
