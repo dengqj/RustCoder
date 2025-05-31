@@ -530,7 +530,12 @@ vector_store.add_item(
 )
 ```
 
-#### Method 2: Adding Multiple Examples from JSON Files
+### Method 2: Adding Multiple Examples from JSON Files
+
+First, ensure you have the required dependencies:
+```bash
+pip install qdrant-client openai
+```
 
 Place JSON files in the appropriate directories:
 
@@ -551,8 +556,7 @@ Format for project examples (with optional `project_files` field):
 ```
 
 Format for error examples:
-
-```
+```json
 {
   "error": "Rust compiler error message",
   "solution": "How to fix the error",
@@ -616,6 +620,8 @@ This certifies that you wrote or have the right to submit the code you're contri
 ## 📜 License
 
 Licensed under [GPLv3](https://www.gnu.org/licenses/gpl-3.0.en.html).
+
+
 
 
 

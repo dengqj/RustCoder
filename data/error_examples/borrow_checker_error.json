@@ -1,0 +1,6 @@
+{
+  "error": "error[E0502]: cannot borrow `v` as mutable because it is also borrowed as immutable",
+  "solution": "Move the immutable borrow into a separate scope to ensure it ends before the mutable borrow begins",
+  "context": "This error occurs when trying to mutably borrow a value while an immutable borrow is still active. The Rust borrow checker prevents this to ensure memory safety.",
+  "example": "// Before (error)\nfn main() {\n    let mut v = vec![1, 2, 3];\n    let first = &v[0];\n    v.push(4); // Error: cannot borrow `v` as mutable\n    println!(\"{}\", first);\n}\n\n// After (fixed)\nfn main() {\n    let mut v = vec![1, 2, 3];\n    {\n        let first = &v[0];\n        println!(\"{}\", first);\n    } // immutable borrow ends here\n    v.push(4); // Now it's safe to borrow mutably\n}"
+}

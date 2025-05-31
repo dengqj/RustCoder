@@ -1,0 +1,6 @@
+{
+  "error": "error[E0106]: missing lifetime specifier",
+  "context": "This error occurs when you return a reference from a function without specifying a lifetime parameter",
+  "solution": "Add a lifetime parameter to the function signature and any references that need it",
+  "example": "// Before (error)\nfn longest(x: &str, y: &str) -> &str {\n    if x.len() > y.len() { x } else { y }\n}\n\n// After (fixed)\nfn longest<'a>(x: &'a str, y: &'a str) -> &'a str {\n    if x.len() > y.len() { x } else { y }\n}"
+}
