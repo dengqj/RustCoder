@@ -49,10 +49,13 @@ def load_error_examples():
         
         # Get embedding for error
         embedding = llm_client.get_embeddings([example["error"]])[0]
+
+        # Store in vector DB with proper UUID
+        point_id = str(uuid.uuid4())
         
         # Store in vector DB
         vector_store.upsert("error_examples", 
-                           [{"id": os.path.basename(file_path), 
+                           [{"id": point_id, 
                              "vector": embedding, 
                              "payload": example}])
         
