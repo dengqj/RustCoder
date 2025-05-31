@@ -690,7 +690,7 @@ Please provide the fixed code for all affected files.
             
             # Return JSON response instead of plain text
             return JSONResponse(content={
-                "status": "success" if success else "failed",
+                "success": success,
                 "message": "Project generated successfully" if success else "Failed to generate working project",
                 "combined_text": all_files_content.strip(),
                 "files": {f: open(os.path.join(temp_dir, f), 'r').read() for f in file_paths if os.path.exists(os.path.join(temp_dir, f))},
