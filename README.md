@@ -25,7 +25,6 @@ Or, if you want to run the services directly on your own computer:
 
 - **Python 3.8+** 🐍
 - **Rust Compiler and cargo tools** 🦀 
-- **Rust Compiler and cargo tools** 🦀 
 
 ---
 
@@ -366,8 +365,6 @@ Rust_coder_lfx/
 │   ├── llm_tools.py      # Tools for LLM interactions
 │   ├── load_data.py      # Data loading utilities
 │   ├── main.py           # FastAPI application & endpoints
-│   ├── mcp_server.py     # MCP server implementation
-│   ├── mcp_service.py    # Model-Compiler-Processor service
 │   ├── mcp_tools.py      # MCP-specific tools
 │   ├── prompt_generator.py # LLM prompt generation
 │   ├── response_parser.py # Parse LLM responses into files
@@ -378,15 +375,6 @@ Rust_coder_lfx/
 │   └── project_examples/ # Project examples for vector search
 ├── docker-compose.yml    # Docker Compose configuration
 ├── Dockerfile            # Docker configuration
-├── examples/             # Example scripts for using the API
-│   ├── compile_endpoint.txt        # Example for compile endpoint
-│   ├── compile_and_fix_endpoint.txt # Example for compile-and-fix endpoint
-│   ├── mcp_client_example.py       # Example MCP client usage
-│   └── run_mcp_server.py           # Example for running MCP server
-├── templates/            # Prompt templates
-│   └── project_prompts.txt # Templates for project generation
-├── mcp-proxy-config.json # MCP proxy configuration
-├── parse_and_save_qna.py # Q&A parsing utility
 ├── requirements.txt      # Python dependencies
 └── .env                  # Environment variables
 ```
@@ -404,7 +392,7 @@ Compilation Feedback Loop: Automatically compiles, detects errors, and fixes the
 
 File Parsing: Converts LLM responses into project files with `response_parser.py`.
 
-#### Architecture
+### Architecture
 
 REST API Interface (app/main.py): FastAPI application exposing HTTP endpoints for project generation, compilation, and error fixing.
 
@@ -416,60 +404,64 @@ LLM Integration (app/llm_client.py): Communicates with LLM APIs (like Gaia nodes
 
 Compilation Pipeline (app/compiler.py): Handles Rust code compilation, error detection, and provides feedback for fixing.
 
-#### Process Flow
+### Process Flow
 
 Project Generation:
 
-User provides a description and requirements
-System creates a prompt using templates (templates/project_prompts.txt)
-LLM generates a complete Rust project
-Response is parsed into individual files (app/response_parser.py)
-Project is compiled to verify correctness
+* User provides a description and requirements
+* System creates a prompt using templates
+* LLM generates a complete Rust project
+* Response is parsed into individual files (`app/response_parser.py`)
+* Project is compiled to verify correctness
 
 Error Fixing:
 
-System attempts to compile the provided code
-If errors occur, they're extracted and analyzed
-Vector search may find similar past errors
-LLM receives the errors and original code to generate fixes
-Process repeats until successful or max attempts reached
+* System attempts to compile the provided code
+* If errors occur, they're extracted and analyzed
+* Vector search may find similar past errors
+* LLM receives the errors and original code to generate fixes
+* Process repeats until successful or max attempts reached
 
 ---
 
-## 📊 Adding to the Vector Database
+## 📊 Enhancing Performance with Vector Search
 
 The system uses vector embeddings to find similar projects and error examples, which helps improve code generation quality. Here's how to add your own examples:
 
 ### 🔧 Creating Vector Collections
 
-First, you need to create the necessary collections in Qdrant using these curl commands:
+First, you need to create the necessary collections in Qdrant using these `curl` commands:
 
 ```bash
-# Create project_examples collection with 1536 dimensions (default)
+# Create project_examples collection with 768 dimensions (default)
 curl -X PUT "http://localhost:6333/collections/project_examples" \
   -H "Content-Type: application/json" \
   -d '{
     "vectors": {
-      "size": 1536,
+      "size": 768,
       "distance": "Cosine"
     }
   }'
 
-# Create error_examples collection with 1536 dimensions (default)
+# Create error_examples collection with 768 dimensions (default)
 curl -X PUT "http://localhost:6333/collections/error_examples" \
   -H "Content-Type: application/json" \
   -d '{
     "vectors": {
-      "size": 1536,
+      "size": 768,
       "distance": "Cosine"
     }
   }'
 ```
-Note: If you've configured a different embedding size via ```LLM_EMBED_SIZE``` environment variable, replace 1536 with that value.
 
-### Method 1: Using Python API Directly
+> Note: If you've configured a different embedding size via `LLM_EMBED_SIZE` environment variable, replace 768 with that value.
 
-#### For Project Examples
+### 🗂️ Adding Data to Vector Collections
+
+#### Method 1: Using Python API Directly
+
+For Project Examples
+
 ```python
 from app.llm_client import LlamaEdgeClient
 from app.vector_store import QdrantStore
@@ -503,6 +495,7 @@ vector_store.add_item(
 ```
 
 For Error Examples:
+
 ```python
 from app.llm_client import LlamaEdgeClient
 from app.vector_store import QdrantStore
@@ -533,12 +526,15 @@ vector_store.add_item(
 )
 ```
 
-### Method 2: Adding Multiple Examples from JSON Files
+#### Method 2: Adding Multiple Examples from JSON Files
+
 Place JSON files in the appropriate directories:
 
-Project examples: ```project_examples```
-Error examples: ```error_examples```
-Format for project examples (with optional project_files field):
+* Project examples: `data/project_examples`
+* Error examples: `data/error_examples`
+
+Format for project examples (with optional `project_files` field):
+
 ```json
 {
   "query": "Description of the project",
@@ -549,7 +545,9 @@ Format for project examples (with optional project_files field):
   }
 }
 ```
+
 Format for error examples:
+
 ```
 {
   "error": "Rust compiler error message",
@@ -558,46 +556,51 @@ Format for error examples:
   "example": "// Code example showing the fix (optional)"
 }
 ```
+
 Then run the data loading script:
+
 ```
 python -c "from app.load_data import load_project_examples, load_error_examples; load_project_examples(); load_error_examples()"
 ```
 
-### Method 3: Using the ```parse_and_save_qna.py``` Script
+#### Method 3: Using the `parse_and_save_qna.py` Script
+
 For bulk importing from a Q&A format text file:
 
-Place your Q&A pairs in a text file with format similar to ```QnA_pair.txt```
-Modify the ```parse_and_save_qna.py``` script to point to your file
+Place your Q&A pairs in a text file with format similar to `QnA_pair.txt`
+Modify the `parse_and_save_qna.py` script to point to your file.
 Run the script:
+
 ```
 python parse_and_save_qna.py
 ```
 
 ## ⚙️ Environment Variables for Vector Search
-The SKIP_VECTOR_SEARCH environment variable controls whether the system uses vector search:
 
-```SKIP_VECTOR_SEARCH```=true - Disables vector search functionality
-```SKIP_VECTOR_SEARCH```=false (or not set) - Enables vector search
-In your current .env file, you have:
-```
-SKIP_VECTOR_SEARCH=true
-```
-This means vector search is currently disabled. To enable it:
-- Change this value to false or remove the line completely
+The `SKIP_VECTOR_SEARCH` environment variable controls whether the system uses vector search:
+
+* `SKIP_VECTOR_SEARCH=true` - Disables vector search functionality
+* `SKIP_VECTOR_SEARCH=false` (or not set) - Enables vector search
+
+By default, vector search is disabled. To enable it:
+
+- Change to `SKIP_VECTOR_SEARCH=false` in your `.env` file
 - Ensure you have a running Qdrant instance (via Docker Compose or standalone)
 - Create the collections as shown above
 
 ## 🤝 Contributing
+
 Contributions are welcome! This project uses the Developer Certificate of Origin (DCO) to certify that contributors have the right to submit their code. Follow these steps:
 
-Fork the repository
-Create your feature branch (git checkout -b feature/amazing-feature)
-Make your changes
-Commit your changes with a sign-off (git commit -s -m 'Add some amazing feature')
-Push to the branch (git push origin feature/amazing-feature)
-Open a Pull Request
+* Fork the repository
+* Create your feature branch `git checkout -b feature/amazing-feature`
+* Make your changes
+* Commit your changes with a sign-off `git commit -s -m 'Add some amazing feature'`
+* Push to the branch `git push origin feature/amazing-feature`
+* Open a Pull Request
 
-The -s flag will automatically add a signed-off-by line to your commit message:
+The `-s` flag will automatically add a signed-off-by line to your commit message:
+
 ```
 Signed-off-by: Your Name <your.email@example.com>
 ```
@@ -607,6 +610,7 @@ This certifies that you wrote or have the right to submit the code you're contri
 ---
 
 ## 📜 License
+
 Licensed under [GPLv3](https://www.gnu.org/licenses/gpl-3.0.en.html).
 
 
