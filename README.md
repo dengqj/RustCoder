@@ -469,6 +469,7 @@ Note: If you've configured a different embedding size via ```LLM_EMBED_SIZE``` e
 
 ### Method 1: Using Python API Directly
 
+#### For Project Examples
 ```python
 from app.llm_client import LlamaEdgeClient
 from app.vector_store import QdrantStore
@@ -477,13 +478,17 @@ from app.vector_store import QdrantStore
 llm_client = LlamaEdgeClient()
 vector_store = QdrantStore()
 
-# Ensure collections exist
-vector_store.create_collection("project_examples")  # or "error_examples"
+# Ensure collection exists
+vector_store.create_collection("project_examples")
 
 # 1. Prepare your data
 project_data = {
     "query": "A command-line calculator in Rust",
-    "example": "Your full project example with code here..."
+    "example": "Your full project example with code here...",
+    "project_files": {
+        "src/main.rs": "fn main() {\n    println!(\"Hello, calculator!\");\n}",
+        "Cargo.toml": "[package]\nname = \"calculator\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]"
+    }
 }
 
 # 2. Get embedding for the query text
@@ -513,7 +518,8 @@ vector_store.create_collection("error_examples")
 error_data = {
     "error": "error[E0502]: cannot borrow `*self` as mutable because it is also borrowed as immutable",
     "solution": "Ensure mutable and immutable borrows don't overlap by using separate scopes",
-    "context": "This error occurs when you try to borrow a value mutably while an immutable borrow exists"
+    "context": "This error occurs when you try to borrow a value mutably while an immutable borrow exists",
+    "example": "// Before (error)\nfn main() {\n    let mut v = vec![1, 2, 3];\n    let first = &v[0];\n    v.push(4); // Error: cannot borrow `v` as mutable\n    println!(\"{}\", first);\n}\n\n// After (fixed)\nfn main() {\n    let mut v = vec![1, 2, 3];\n    {\n        let first = &v[0];\n        println!(\"{}\", first);\n    } // immutable borrow ends here\n    v.push(4); // Now it's safe to borrow mutably\n}"
 }
 
 # 2. Get embedding for the error message
