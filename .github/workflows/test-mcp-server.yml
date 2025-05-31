@@ -11,14 +11,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
     
-    env:
-      LLM_API_BASE: http://localhost:8080/v1
-      LLM_MODEL: Qwen2.5-Coder-3B-Instruct-Q5_K_M  
-      LLM_EMBED_MODEL: local-embed
-      LLM_EMBED_SIZE: 768
-      LLM_API_KEY: ""
-      SKIP_VECTOR_SEARCH: "true"  
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4.2.2
@@ -34,10 +26,19 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt
 
+      - name: Set up env
+        run: |
+            echo "LLM_API_BASE=${{ env.LLM_API_BASE }}" > .env.temp
+            echo "LLM_API_KEY=${{ secrets.LLM_API_KEY }}" >> .env.temp
+            echo "LLM_MODEL=${{ env.LLM_MODEL }}" >> .env.temp
+            echo "LLM_EMBED_MODEL=${{ env.LLM_EMBED_MODEL }}" >> .env.temp
+            echo "LLM_EMBED_SIZE=${{ env.LLM_EMBED_SIZE }}" >> .env.temp
+        
       - name: Run docker compose
         uses: hoverkraft-tech/compose-action@v2.0.1
         with:
           compose-file: ./docker-compose.yml
+          compose-flags: "--env-file .env.temp"
           up-flags: "-d --build"
 
       - name: Wait for services to be ready
