@@ -278,7 +278,14 @@ jobs:
           fi
     
           # Get the output from the previous step and remove the build status comment
-          GENERATE_OUTPUT=$(cat generate_output.txt | sed '/^# Build/,$d')
+          # GENERATE_OUTPUT=$(cat generate_output.txt | sed '/^# Build/,$d')
+          # COMPILE_RESPONSE=$(curl -s -S -f -X POST http://localhost:8000/compile \
+          #   -H "Content-Type: application/json" \
+          #   -d "{
+          #     \"code\": $(python3 -c "import json, sys; print(json.dumps(sys.stdin.read()))" < <(echo "$GENERATE_OUTPUT"))
+          #   }" || echo "CURL_FAILED")
+
+          # Replace with:
           COMPILE_RESPONSE=$(curl -s -S -f -X POST http://localhost:8000/compile \
             -H "Content-Type: application/json" \
             -d "{
