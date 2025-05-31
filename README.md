@@ -579,42 +579,6 @@ Run the script:
 python parse_and_save_qna.py
 ```
 
-## Example JSON Files
-
-Here are examples for both directories:
-
-### Project Example (data/project_examples/calculator.json)
-
-```json
-{
-  "query": "Create a command-line calculator in Rust",
-  "example": "A simple calculator that can add, subtract, multiply and divide numbers",
-  "project_files": {
-    "src/main.rs": "use std::io;\n\nfn main() {\n    println!(\"Simple Calculator\");\n    println!(\"Enter an expression (e.g., 5 + 3):\");\n    \n    let mut input = String::new();\n    io::stdin().read_line(&mut input).expect(\"Failed to read line\");\n    \n    let parts: Vec<&str> = input.trim().split_whitespace().collect();\n    \n    if parts.len() != 3 {\n        println!(\"Invalid expression! Please use format: number operator number\");\n        return;\n    }\n    \n    let a: f64 = match parts[0].parse() {\n        Ok(num) => num,\n        Err(_) => {\n            println!(\"First value is not a valid number\");\n            return;\n        }\n    };\n    \n    let operator = parts[1];\n    \n    let b: f64 = match parts[2].parse() {\n        Ok(num) => num,\n        Err(_) => {\n            println!(\"Second value is not a valid number\");\n            return;\n        }\n    };\n    \n    let result = match operator {\n        \"+\" => a + b,\n        \"-\" => a - b,\n        \"*\" => a * b,\n        \"/\" => {\n            if b == 0.0 {\n                println!(\"Error: Division by zero\");\n                return;\n            }\n            a / b\n        },\n        _ => {\n            println!(\"Unknown operator: {}\", operator);\n            return;\n        }\n    };\n    \n    println!(\"Result: {} {} {} = {}\", a, operator, b, result);\n}",
-    "Cargo.toml": "[package]\nname = \"calculator\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n",
-    "README.md": "# Command-Line Calculator\n\nA simple Rust command-line calculator that supports basic arithmetic operations.\n\n## Usage\n\nRun the program and enter expressions in the format `number operator number`, such as:\n\n```\n5 + 3\n10 - 2\n4 * 7\n9 / 3\n```\n\nSupported operators: +, -, *, /"
-  }
-}
-```
-### Error Example (data/error_examples/borrow_checker_error.json)
-```json
-{
-  "error": "error[E0502]: cannot borrow `v` as mutable because it is also borrowed as immutable",
-  "solution": "Move the immutable borrow into a separate scope to ensure it ends before the mutable borrow begins",
-  "context": "This error occurs when trying to mutably borrow a value while an immutable borrow is still active. The Rust borrow checker prevents this to ensure memory safety.",
-  "example": "// Before (error)\nfn main() {\n    let mut v = vec![1, 2, 3];\n    let first = &v[0];\n    v.push(4); // Error: cannot borrow `v` as mutable\n    println!(\"{}\", first);\n}\n\n// After (fixed)\nfn main() {\n    let mut v = vec![1, 2, 3];\n    {\n        let first = &v[0];\n        println!(\"{}\", first);\n    } // immutable borrow ends here\n    v.push(4); // Now it's safe to borrow mutably\n}"
-}
-```
-### Error Example (data/error_examples/missing_trait_bound.json)
-```json
-{
-  "error": "error[E0277]: the trait bound `T: std::fmt::Display` is not satisfied",
-  "solution": "Add a trait bound to the generic parameter to ensure it implements the required trait",
-  "context": "This error occurs when using a generic type with a function that requires specific traits, but the generic parameter doesn't specify those trait bounds.",
-  "example": "// Before (error)\nfn print_item<T>(item: T) {\n    println!(\"{}\", item); // Error: `T` might not implement `Display`\n}\n\n// After (fixed)\nfn print_item<T: std::fmt::Display>(item: T) {\n    println!(\"{}\", item); // Now we know T implements Display\n}\n\n// Alternative fix using where clause\nfn print_item<T>(item: T) \nwhere\n    T: std::fmt::Display,\n{\n    println!(\"{}\", item);\n}"
-}
-```
-
 ## ⚙️ Environment Variables for Vector Search
 The SKIP_VECTOR_SEARCH environment variable controls whether the system uses vector search:
 
