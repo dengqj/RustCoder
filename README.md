@@ -25,7 +25,6 @@ Or, if you want to run the services directly on your own computer:
 
 - **Python 3.8+** 🐍
 - **Rust Compiler and cargo tools** 🦀 
-- **Rust Compiler and cargo tools** 🦀 
 
 ---
 
@@ -114,21 +113,21 @@ The API provides the following endpoints:
 
 #### 📤 Response:
 
+The `combined_text` field contains the flat text output of Rust project files that can be used as input for `/compile` and `/compile-and-fix` API calls.
+
 ```
-[filename: Cargo.toml]
-[package]
-name = "calculator"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-... ...
-
-[filename: src/main.rs]
-fn main() {
-    // Calculator implementation
+{
+   "success": true,
+   "message":"Project generated successfully",
+   "combined_text":"[filename: Cargo.toml]\n[package]\nname = \"calculator\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html\n\n[dependencies]\nclap = { version = \"4.5\", features = [\"derive\"] }\n\n[filename: src/main.rs]\nuse std::io;\nuse clap::Parser;\n\n#[derive(Parser, Debug)]\n#[command(author, version, about, long_about = None)]\nstruct Args {\n    /// The first number\n    #[arg(required = true)]\n    num1: f64,\n    /// Operator (+, -, *, /)\n    #[arg(required = true, value_parser = clap::value_parser!(f64))]\n    operator: String,\n    /// The second number\n    #[arg(required = true)]\n    num2: f64,\n}\n\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let args = Args::parse();\n\n    match args.operator.as_str() {\n        \"+\" => {\n            println!(\"{}\", args.num1 + args.num2);\n        }\n        \"-\" => {\n            println!(\"{}\", args.num1 - args.num2);\n        }\n        \"*\" => {\n            println!(\"{}\", args.num1 * args.num2);\n        }\n        \"/\" => {\n            if args.num2 == 0.0 {\n                eprintln!(\"Error: Cannot divide by zero.\");\n                std::process::exit(1);\n            }\n            println!(\"{}\", args.num1 / args.num2);\n        }\n        _ => {\n            eprintln!(\"Error: Invalid operator. Use +, -, *, or /\");\n            std::process::exit(1);\n        }\n    }\n\n    Ok(())\n}\n\n[filename: README.md]\n# Calculator\n\nA simple command-line calculator written in Rust.  Supports addition, subtraction, multiplication, and division.\n\n## Usage\n\nRun the program with two numbers and an operator as arguments:\n\n```bash\ncargo run <num1> <operator> <num2>\n```\n\nWhere `<operator>` is one of `+`, `-`, `*`, or `/`.\n\n**Example:**\n\n```bash\ncargo run 5 + 3\n# Output: 8\n\ncargo run 10 / 2\n# Output: 5\n\ncargo run 7 * 4\n# Output: 28\n```\n\n## Error Handling\n\nThe calculator handles division by zero and invalid operator inputs.  Error messages are printed to standard error, and the program exits with a non-zero exit code in case of an error.\n\n\n# Build succeeded",
+   "files":{
+      "Cargo.toml":"[package]\nname = \"calculator\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html\n\n[dependencies]\nclap = { version = \"4.5\", features = [\"derive\"] }",
+      "src/main.rs":"use std::io;\nuse clap::Parser;\n\n#[derive(Parser, Debug)]\n#[command(author, version, about, long_about = None)]\nstruct Args {\n    /// The first number\n    #[arg(required = true)]\n    num1: f64,\n    /// Operator (+, -, *, /)\n    #[arg(required = true, value_parser = clap::value_parser!(f64))]\n    operator: String,\n    /// The second number\n    #[arg(required = true)]\n    num2: f64,\n}\n\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let args = Args::parse();\n\n    match args.operator.as_str() {\n        \"+\" => {\n            println!(\"{}\", args.num1 + args.num2);\n        }\n        \"-\" => {\n            println!(\"{}\", args.num1 - args.num2);\n        }\n        \"*\" => {\n            println!(\"{}\", args.num1 * args.num2);\n        }\n        \"/\" => {\n            if args.num2 == 0.0 {\n                eprintln!(\"Error: Cannot divide by zero.\");\n                std::process::exit(1);\n            }\n            println!(\"{}\", args.num1 / args.num2);\n        }\n        _ => {\n            eprintln!(\"Error: Invalid operator. Use +, -, *, or /\");\n            std::process::exit(1);\n        }\n    }\n\n    Ok(())\n}",
+      "README.md":"# Calculator\n\nA simple command-line calculator written in Rust.  Supports addition, subtraction, multiplication, and division.\n\n## Usage\n\nRun the program with two numbers and an operator as arguments:\n\n```bash\ncargo run <num1> <operator> <num2>\n```\n\nWhere `<operator>` is one of `+`, `-`, `*`, or `/`.\n\n**Example:**\n\n```bash\ncargo run 5 + 3\n# Output: 8\n\ncargo run 10 / 2\n# Output: 5\n\ncargo run 7 * 4\n# Output: 28\n```\n\n## Error Handling\n\nThe calculator handles division by zero and invalid operator inputs.  Error messages are printed to standard error, and the program exits with a non-zero exit code in case of an error."
+   },
+   "build_output":null,
+   "build_success":true
 }
-... ...
 ```
 
 ### 🛠 Compile a Project
@@ -177,7 +176,7 @@ curl -X POST http://localhost:8000/compile \
 curl -X POST http://localhost:8000/compile-and-fix \
 -H "Content-Type: application/json" \
 -d '{
-  "code": "[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    println!(\"Hello, World!\" // Missing closing parenthesis\n}",
+  "code": "[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    print \"Hello, World!\" \n}",
   "description": "A simple hello world program",
   "max_attempts": 3
 }'
@@ -187,7 +186,7 @@ curl -X POST http://localhost:8000/compile-and-fix \
 
 ```
 {
-  "code": "[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    println!(\"Hello, World!\" // Missing closing parenthesis\n}",
+  "code": "[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    print \"Hello, World!\" \n}",
   "description": "A simple hello world program",
   "max_attempts": 3
 }
@@ -195,29 +194,33 @@ curl -X POST http://localhost:8000/compile-and-fix \
      
 #### 📤 Response:
 
+The `combined_text` field contains the flat text output of Rust project files that is in the same format as the input `code` field.
+
 ```
 {
-  "success": true,
-  "attempts": [
-    {
-      "attempt": 1,
-      "success": false,
-      "output": "   Compiling hello_world v0.1.0 (/tmp/tmpk_0n65md)\nerror: mismatched closing delimiter: `}`\n --> src/main.rs:2:13\n  |\n1 | fn main() {\n  |           - closing delimiter possibly meant for this\n2 |     println!(\"Hello, World!\" // Missing closing parenthesis\n  |             ^ unclosed delimiter\n3 | }\n  | ^ mismatched closing delimiter\n\nerror: could not compile `hello_world` (bin \"hello_world\") due to 1 previous error\n"
-    },
-    {
-      "attempt": 2,
-      "success": true,
-      "output": null
-    }
-  ],
-  "final_files": {
-    "Cargo.toml": "[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]",
-    "src/main.rs": "fn main() {\n    println!(\"Hello, World!\");\n}"
-  },
-  "build_output": "Build successful",
-  "run_output": "Hello, World!\n",
-  "similar_project_used": false,
-  "combined_text": "[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    println!(\"Hello, World!\");\n}"
+   "success": true,
+   "message":"Code fixed and compiled successfully",
+   "attempts":[
+      {
+         "attempt":1,
+         "success":false,
+         "output":"   Compiling hello_world v0.1.0 (/tmp/tmpbgeg4x_e)\nerror: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `\"Hello, World!\"`\n --> src/main.rs:2:11\n  |\n2 |     print \"Hello, World!\" \n  |           ^^^^^^^^^^^^^^^ expected one of 8 possible tokens\n\nerror: could not compile `hello_world` (bin \"hello_world\") due to 1 previous error\n"
+      },
+      {
+         "attempt":2,
+         "success":true,
+         "output":null
+      }
+   ],
+   "combined_text":"[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    println!(\"Hello, World!\");\n}\n\n[filename: README.md]\n# Hello World\n\nThis is a simple \"Hello, World!\" program in Rust.  It prints the message \"Hello, World!\" to the console.\n\nTo run it:\n\n1.  Make sure you have Rust installed ([https://www.rust-lang.org/](https://www.rust-lang.org/)).\n2.  Save the code as `src/main.rs`.\n3.  Run `cargo run` in the terminal from the project directory.",
+   "files":{
+      "Cargo.toml":"[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html\n\n[dependencies]",
+      "src/main.rs":"fn main() {\n    println!(\"Hello, World!\");\n}",
+      "README.md":"# Hello World\n\nThis is a simple \"Hello, World!\" program in Rust.  It prints the message \"Hello, World!\" to the console.\n\nTo run it:\n\n1.  Make sure you have Rust installed ([https://www.rust-lang.org/](https://www.rust-lang.org/)).\n2.  Save the code as `src/main.rs`.\n3.  Run `cargo run` in the terminal from the project directory."
+   },
+   "build_output":"Build successful",
+   "run_output":"Hello, World!\n",
+   "build_success":true
 }
 ```
 
@@ -366,8 +369,6 @@ Rust_coder_lfx/
 │   ├── llm_tools.py      # Tools for LLM interactions
 │   ├── load_data.py      # Data loading utilities
 │   ├── main.py           # FastAPI application & endpoints
-│   ├── mcp_server.py     # MCP server implementation
-│   ├── mcp_service.py    # Model-Compiler-Processor service
 │   ├── mcp_tools.py      # MCP-specific tools
 │   ├── prompt_generator.py # LLM prompt generation
 │   ├── response_parser.py # Parse LLM responses into files
@@ -378,15 +379,6 @@ Rust_coder_lfx/
 │   └── project_examples/ # Project examples for vector search
 ├── docker-compose.yml    # Docker Compose configuration
 ├── Dockerfile            # Docker configuration
-├── examples/             # Example scripts for using the API
-│   ├── compile_endpoint.txt        # Example for compile endpoint
-│   ├── compile_and_fix_endpoint.txt # Example for compile-and-fix endpoint
-│   ├── mcp_client_example.py       # Example MCP client usage
-│   └── run_mcp_server.py           # Example for running MCP server
-├── templates/            # Prompt templates
-│   └── project_prompts.txt # Templates for project generation
-├── mcp-proxy-config.json # MCP proxy configuration
-├── parse_and_save_qna.py # Q&A parsing utility
 ├── requirements.txt      # Python dependencies
 └── .env                  # Environment variables
 ```
@@ -404,7 +396,7 @@ Compilation Feedback Loop: Automatically compiles, detects errors, and fixes the
 
 File Parsing: Converts LLM responses into project files with `response_parser.py`.
 
-#### Architecture
+### Architecture
 
 REST API Interface (app/main.py): FastAPI application exposing HTTP endpoints for project generation, compilation, and error fixing.
 
@@ -416,60 +408,64 @@ LLM Integration (app/llm_client.py): Communicates with LLM APIs (like Gaia nodes
 
 Compilation Pipeline (app/compiler.py): Handles Rust code compilation, error detection, and provides feedback for fixing.
 
-#### Process Flow
+### Process Flow
 
 Project Generation:
 
-User provides a description and requirements
-System creates a prompt using templates (templates/project_prompts.txt)
-LLM generates a complete Rust project
-Response is parsed into individual files (app/response_parser.py)
-Project is compiled to verify correctness
+* User provides a description and requirements
+* System creates a prompt using templates
+* LLM generates a complete Rust project
+* Response is parsed into individual files (`app/response_parser.py`)
+* Project is compiled to verify correctness
 
 Error Fixing:
 
-System attempts to compile the provided code
-If errors occur, they're extracted and analyzed
-Vector search may find similar past errors
-LLM receives the errors and original code to generate fixes
-Process repeats until successful or max attempts reached
+* System attempts to compile the provided code
+* If errors occur, they're extracted and analyzed
+* Vector search may find similar past errors
+* LLM receives the errors and original code to generate fixes
+* Process repeats until successful or max attempts reached
 
 ---
 
-## 📊 Adding to the Vector Database
+## 📊 Enhancing Performance with Vector Search
 
 The system uses vector embeddings to find similar projects and error examples, which helps improve code generation quality. Here's how to add your own examples:
 
 ### 🔧 Creating Vector Collections
 
-First, you need to create the necessary collections in Qdrant using these curl commands:
+First, you need to create the necessary collections in Qdrant using these `curl` commands:
 
 ```bash
-# Create project_examples collection with 1536 dimensions (default)
+# Create project_examples collection with 768 dimensions (default)
 curl -X PUT "http://localhost:6333/collections/project_examples" \
   -H "Content-Type: application/json" \
   -d '{
     "vectors": {
-      "size": 1536,
+      "size": 768,
       "distance": "Cosine"
     }
   }'
 
-# Create error_examples collection with 1536 dimensions (default)
+# Create error_examples collection with 768 dimensions (default)
 curl -X PUT "http://localhost:6333/collections/error_examples" \
   -H "Content-Type: application/json" \
   -d '{
     "vectors": {
-      "size": 1536,
+      "size": 768,
       "distance": "Cosine"
     }
   }'
 ```
-Note: If you've configured a different embedding size via ```LLM_EMBED_SIZE``` environment variable, replace 1536 with that value.
 
-### Method 1: Using Python API Directly
+> Note: If you've configured a different embedding size via `LLM_EMBED_SIZE` environment variable, replace 768 with that value.
 
-#### For Project Examples
+### 🗂️ Adding Data to Vector Collections
+
+#### Method 1: Using Python API Directly
+
+For Project Examples
+
 ```python
 from app.llm_client import LlamaEdgeClient
 from app.vector_store import QdrantStore
@@ -503,6 +499,7 @@ vector_store.add_item(
 ```
 
 For Error Examples:
+
 ```python
 from app.llm_client import LlamaEdgeClient
 from app.vector_store import QdrantStore
@@ -542,9 +539,11 @@ pip install qdrant-client openai
 
 Place JSON files in the appropriate directories:
 
-Project examples: ```project_examples```
-Error examples: ```error_examples```
-Format for project examples (with optional project_files field):
+* Project examples: `data/project_examples`
+* Error examples: `data/error_examples`
+
+Format for project examples (with optional `project_files` field):
+
 ```json
 {
   "query": "Description of the project",
@@ -555,6 +554,7 @@ Format for project examples (with optional project_files field):
   }
 }
 ```
+
 Format for error examples:
 ```json
 {
@@ -564,46 +564,51 @@ Format for error examples:
   "example": "// Code example showing the fix (optional)"
 }
 ```
+
 Then run the data loading script:
+
 ```
 python -c "from app.load_data import load_project_examples, load_error_examples; load_project_examples(); load_error_examples()"
 ```
 
-### Method 3: Using the ```parse_and_save_qna.py``` Script
+#### Method 3: Using the `parse_and_save_qna.py` Script
+
 For bulk importing from a Q&A format text file:
 
-Place your Q&A pairs in a text file with format similar to ```QnA_pair.txt```
-Modify the ```parse_and_save_qna.py``` script to point to your file
+Place your Q&A pairs in a text file with format similar to `QnA_pair.txt`
+Modify the `parse_and_save_qna.py` script to point to your file.
 Run the script:
+
 ```
 python parse_and_save_qna.py
 ```
 
 ## ⚙️ Environment Variables for Vector Search
-The SKIP_VECTOR_SEARCH environment variable controls whether the system uses vector search:
 
-```SKIP_VECTOR_SEARCH```=true - Disables vector search functionality
-```SKIP_VECTOR_SEARCH```=false (or not set) - Enables vector search
-In your current .env file, you have:
-```
-SKIP_VECTOR_SEARCH=true
-```
-This means vector search is currently disabled. To enable it:
-- Change this value to false or remove the line completely
+The `SKIP_VECTOR_SEARCH` environment variable controls whether the system uses vector search:
+
+* `SKIP_VECTOR_SEARCH=true` - Disables vector search functionality
+* `SKIP_VECTOR_SEARCH=false` (or not set) - Enables vector search
+
+By default, vector search is disabled. To enable it:
+
+- Change to `SKIP_VECTOR_SEARCH=false` in your `.env` file
 - Ensure you have a running Qdrant instance (via Docker Compose or standalone)
 - Create the collections as shown above
 
 ## 🤝 Contributing
+
 Contributions are welcome! This project uses the Developer Certificate of Origin (DCO) to certify that contributors have the right to submit their code. Follow these steps:
 
-Fork the repository
-Create your feature branch (git checkout -b feature/amazing-feature)
-Make your changes
-Commit your changes with a sign-off (git commit -s -m 'Add some amazing feature')
-Push to the branch (git push origin feature/amazing-feature)
-Open a Pull Request
+* Fork the repository
+* Create your feature branch `git checkout -b feature/amazing-feature`
+* Make your changes
+* Commit your changes with a sign-off `git commit -s -m 'Add some amazing feature'`
+* Push to the branch `git push origin feature/amazing-feature`
+* Open a Pull Request
 
-The -s flag will automatically add a signed-off-by line to your commit message:
+The `-s` flag will automatically add a signed-off-by line to your commit message:
+
 ```
 Signed-off-by: Your Name <your.email@example.com>
 ```
@@ -613,6 +618,7 @@ This certifies that you wrote or have the right to submit the code you're contri
 ---
 
 ## 📜 License
+
 Licensed under [GPLv3](https://www.gnu.org/licenses/gpl-3.0.en.html).
 
 
