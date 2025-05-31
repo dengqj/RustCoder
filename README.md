@@ -1,6 +1,6 @@
 # Rust Coder
 
-API and MCP services that generate fully functional Rust projects from natural language descriptions. These services leverage LLMs to create complete Rust cargo projects, compile Rust source code, and automatically fix compiler errors.
+AI agents could autonomously write and execute software programs in order to accomplish their own tasks and goals. The Rust language is a perfect fit for AI agents -- as the powerful Rust compiler can provide real-time and autonomous feedback to the agent to ensure the validity of the generated code. The Rust Coder project is an open source effort to provide such tools. It consists of API and MCP services that generate fully functional Rust projects from natural language descriptions. These services leverage LLMs to create complete Rust cargo projects, compile Rust source code, and automatically fix compiler errors.
 
 ---
 
@@ -39,14 +39,14 @@ cd Rust_coder
 
 ### Using Docker (Recommended)
 
-Edit the `docker-compose.yml` file and specify your own LLM API server. The default config assumes that you have a [Gaia node like this](https://github.com/GaiaNet-AI/node-configs/tree/main/qwen-2.5-coder-3b-instruct-gte) running on `localhost` port `8080`. The alternative configuration shown below uses a [public Gaia node for coding assistance](https://docs.gaianet.ai/nodes#coding-assistant-agents).
+Create the `.env` file and specify your own LLM API server. The default config assumes that you have a [Gaia node like this](https://github.com/GaiaNet-AI/node-configs/tree/main/qwen-2.5-coder-3b-instruct-gte) running on `localhost` port `8080`. The alternative configuration shown below uses a [public Gaia node for coding assistance](https://docs.gaianet.ai/nodes#coding-assistant-agents).
 
 ```
-- LLM_API_BASE=https://coder.gaia.domains/v1
-- LLM_MODEL=Qwen2.5-Coder-32B-Instruct-Q5_K_M
-- LLM_EMBED_MODEL=nomic-embed
-- LLM_API_KEY=<YOUR API KEY FROM GAIANET.AI>
-- LLM_EMBED_SIZE=768
+LLM_API_BASE=https://0x9fcf7888963793472bfcb8c14f4b6b47a7462f17.gaia.domains/v1
+LLM_MODEL=gemma-3-27b-it-q4_0
+LLM_EMBED_MODEL=nomic-embed
+LLM_API_KEY=1234ABCD
+LLM_EMBED_SIZE=768
 ```
 
 Start the services.
@@ -428,7 +428,7 @@ Error Fixing:
 
 ---
 
-## 📊 Enhancing Performance with Vector Search
+## 📊 Advanced: Enhancing Performance with Vector Search
 
 The system uses vector embeddings to find similar projects and error examples, which helps improve code generation quality. Here's how to add your own examples:
 
