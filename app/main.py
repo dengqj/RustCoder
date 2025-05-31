@@ -5,6 +5,7 @@ import json
 from typing import Dict, List, Optional
 from dotenv import load_dotenv
 import tempfile
+import logging
 
 # Load environment variables from .env file
 load_dotenv()
@@ -21,15 +22,21 @@ from app.vector_store import QdrantStore
 
 app = FastAPI(title="Rust Project Generator API")
 
+class AppConfig:
+    def __init__(self):
+        self.api_key = os.getenv("LLM_API_KEY", "")
+        self.skip_vector_search = os.getenv("SKIP_VECTOR_SEARCH", "").lower() == "true"
+        self.embed_size = int(os.getenv("LLM_EMBED_SIZE", "1536"))
+        # Add other config values
+
+config = AppConfig()
+
 # Get API key from environment variable (make optional)
-api_key = os.getenv("LLM_API_KEY", "")
+api_key = config.api_key
 # Only validate if not using local setup
 if not api_key and not (os.getenv("LLM_API_BASE", "").startswith("http://localhost") or 
                         os.getenv("LLM_API_BASE", "").startswith("http://host.docker.internal")):
     raise ValueError("LLM_API_KEY environment variable not set")
-
-# Get embedding size from environment variable
-llm_embed_size = int(os.getenv("LLM_EMBED_SIZE", "1536"))  # Default to 1536 for compatibility
 
 # Initialize components
 llm_client = LlamaEdgeClient(api_key=api_key)
@@ -39,8 +46,8 @@ compiler = RustCompiler()
 
 # Initialize vector store
 try:
-    vector_store = QdrantStore(embedding_size=llm_embed_size)
-    if os.getenv("SKIP_VECTOR_SEARCH", "").lower() != "true":
+    vector_store = QdrantStore(embedding_size=config.embed_size)
+    if config.skip_vector_search != "true":
         vector_store.create_collection("project_examples")
         vector_store.create_collection("error_examples")
         
@@ -160,7 +167,21 @@ async def compile_rust(request: dict):
 
 @app.post("/compile-and-fix")
 async def compile_and_fix_rust(request: dict):
-    """Endpoint to compile and fix Rust code"""
+    """
+    Compile Rust code and automatically fix compilation errors.
+    
+    Args:
+        request (dict): Dictionary containing:
+            - code (str): Multi-file Rust code with filename markers
+            - description (str): Project description 
+            - max_attempts (int, optional): Maximum fix attempts (default: 10)
+            
+    Returns:
+        JSONResponse: Result of compilation with fixed code if successful
+        
+    Raises:
+        HTTPException: If required fields are missing or processing fails
+    """
     if "code" not in request or "description" not in request:
         raise HTTPException(status_code=400, detail="Missing required fields")
     
@@ -225,7 +246,7 @@ async def compile_and_fix_rust(request: dict):
             
             # Find similar errors in vector DB
             similar_errors = []
-            if vector_store is not None and os.getenv("SKIP_VECTOR_SEARCH", "").lower() != "true":
+            if vector_store is not None and config.skip_vector_search != "true":
                 try:
                     # Find similar errors in vector DB
                     error_embedding = llm_client.get_embeddings([error_context["full_error"]])[0]
@@ -309,7 +330,7 @@ async def handle_project_generation(
     
     try:
         # Skip vector search if environment variable is set
-        skip_vector_search = os.getenv("SKIP_VECTOR_SEARCH", "").lower() == "true"
+        skip_vector_search = config.skip_vector_search
         
         example_text = ""
         if not skip_vector_search:
@@ -397,7 +418,7 @@ fn main() {
             error_context = compiler.extract_error_context(output)
             
             # Skip vector search if environment variable is set
-            skip_vector_search = os.getenv("SKIP_VECTOR_SEARCH", "").lower() == "true"
+            skip_vector_search = config.skip_vector_search
             similar_errors = []
             
             if not skip_vector_search:
@@ -468,9 +489,11 @@ Please provide the fixed code for all affected files.
         })
         save_status(project_dir, status)
 
-def save_status(project_dir: str, status: Dict):
-    """Save project status to file"""
-    with open(f"{project_dir}/status.json", 'w') as f:
+def save_status(project_dir, status):
+    """Save project status to file with proper resource management"""
+    status_path = f"{project_dir}/status.json"
+    os.makedirs(os.path.dirname(status_path), exist_ok=True)
+    with open(status_path, 'w') as f:
         json.dump(status, f)
 
 @app.get("/project/{project_id}/files/{file_path:path}")
@@ -536,7 +559,7 @@ async def generate_project_sync(request: ProjectRequest):
             similar_errors = []
             
             # Skip vector search if environment variable is set
-            skip_vector_search = os.getenv("SKIP_VECTOR_SEARCH", "").lower() == "true"
+            skip_vector_search = config.skip_vector_search
             
             if not skip_vector_search:
                 try:
@@ -621,7 +644,7 @@ fn main() {
                 error_context = compiler.extract_error_context(output)
                 
                 # Skip vector search if environment variable is set
-                skip_vector_search = os.getenv("SKIP_VECTOR_SEARCH", "").lower() == "true"
+                skip_vector_search = config.skip_vector_search
                 
                 if not skip_vector_search:
                     try:
@@ -700,3 +723,47 @@ Please provide the fixed code for all affected files.
                 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating project: {str(e)}")
+
+def find_similar_projects(description, vector_store, llm_client):
+    """Find similar projects in vector store"""
+    skip_vector_search = os.getenv("SKIP_VECTOR_SEARCH", "").lower() == "true"
+    example_text = ""
+    
+    if not skip_vector_search:
+        try:
+            query_embedding = llm_client.get_embeddings([description])[0]
+            similar_projects = vector_store.search("project_examples", query_embedding, limit=1)
+            if similar_projects:
+                example_text = f"\nHere's a similar project you can use as reference:\n{similar_projects[0]['example']}"
+        except Exception as e:
+            logger.warning(f"Vector search error (non-critical): {e}")
+    
+    return example_text
+
+logger = logging.getLogger(__name__)
+
+def extract_and_find_similar_errors(error_output, vector_store, llm_client):
+    """Extract error context and find similar errors"""
+    error_context = compiler.extract_error_context(error_output)
+    similar_errors = []
+    
+    if vector_store and not config.skip_vector_search:
+        try:
+            error_embedding = llm_client.get_embeddings([error_context["full_error"]])[0]
+            similar_errors = vector_store.search("error_examples", error_embedding, limit=3)
+        except Exception as e:
+            logger.warning(f"Vector search error: {e}")
+    
+    return error_context, similar_errors
+
+# try:
+#     # ...specific operation
+# except FileNotFoundError as e:
+#     logger.error(f"File not found: {e}")
+#     # Handle specifically
+# except PermissionError as e:
+#     logger.error(f"Permission denied: {e}")
+#     # Handle specifically
+# except Exception as e:
+#     logger.exception(f"Unexpected error: {e}")
+#     # Generic fallback
