@@ -113,21 +113,21 @@ The API provides the following endpoints:
 
 #### 📤 Response:
 
+The `combined_text` field contains the flat text output of Rust project files that can be used as input for `/compile` and `/compile-and-fix` API calls.
+
 ```
-[filename: Cargo.toml]
-[package]
-name = "calculator"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-... ...
-
-[filename: src/main.rs]
-fn main() {
-    // Calculator implementation
+{
+   "success": true,
+   "message":"Project generated successfully",
+   "combined_text":"[filename: Cargo.toml]\n[package]\nname = \"calculator\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html\n\n[dependencies]\nclap = { version = \"4.5\", features = [\"derive\"] }\n\n[filename: src/main.rs]\nuse std::io;\nuse clap::Parser;\n\n#[derive(Parser, Debug)]\n#[command(author, version, about, long_about = None)]\nstruct Args {\n    /// The first number\n    #[arg(required = true)]\n    num1: f64,\n    /// Operator (+, -, *, /)\n    #[arg(required = true, value_parser = clap::value_parser!(f64))]\n    operator: String,\n    /// The second number\n    #[arg(required = true)]\n    num2: f64,\n}\n\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let args = Args::parse();\n\n    match args.operator.as_str() {\n        \"+\" => {\n            println!(\"{}\", args.num1 + args.num2);\n        }\n        \"-\" => {\n            println!(\"{}\", args.num1 - args.num2);\n        }\n        \"*\" => {\n            println!(\"{}\", args.num1 * args.num2);\n        }\n        \"/\" => {\n            if args.num2 == 0.0 {\n                eprintln!(\"Error: Cannot divide by zero.\");\n                std::process::exit(1);\n            }\n            println!(\"{}\", args.num1 / args.num2);\n        }\n        _ => {\n            eprintln!(\"Error: Invalid operator. Use +, -, *, or /\");\n            std::process::exit(1);\n        }\n    }\n\n    Ok(())\n}\n\n[filename: README.md]\n# Calculator\n\nA simple command-line calculator written in Rust.  Supports addition, subtraction, multiplication, and division.\n\n## Usage\n\nRun the program with two numbers and an operator as arguments:\n\n```bash\ncargo run <num1> <operator> <num2>\n```\n\nWhere `<operator>` is one of `+`, `-`, `*`, or `/`.\n\n**Example:**\n\n```bash\ncargo run 5 + 3\n# Output: 8\n\ncargo run 10 / 2\n# Output: 5\n\ncargo run 7 * 4\n# Output: 28\n```\n\n## Error Handling\n\nThe calculator handles division by zero and invalid operator inputs.  Error messages are printed to standard error, and the program exits with a non-zero exit code in case of an error.\n\n\n# Build succeeded",
+   "files":{
+      "Cargo.toml":"[package]\nname = \"calculator\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html\n\n[dependencies]\nclap = { version = \"4.5\", features = [\"derive\"] }",
+      "src/main.rs":"use std::io;\nuse clap::Parser;\n\n#[derive(Parser, Debug)]\n#[command(author, version, about, long_about = None)]\nstruct Args {\n    /// The first number\n    #[arg(required = true)]\n    num1: f64,\n    /// Operator (+, -, *, /)\n    #[arg(required = true, value_parser = clap::value_parser!(f64))]\n    operator: String,\n    /// The second number\n    #[arg(required = true)]\n    num2: f64,\n}\n\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let args = Args::parse();\n\n    match args.operator.as_str() {\n        \"+\" => {\n            println!(\"{}\", args.num1 + args.num2);\n        }\n        \"-\" => {\n            println!(\"{}\", args.num1 - args.num2);\n        }\n        \"*\" => {\n            println!(\"{}\", args.num1 * args.num2);\n        }\n        \"/\" => {\n            if args.num2 == 0.0 {\n                eprintln!(\"Error: Cannot divide by zero.\");\n                std::process::exit(1);\n            }\n            println!(\"{}\", args.num1 / args.num2);\n        }\n        _ => {\n            eprintln!(\"Error: Invalid operator. Use +, -, *, or /\");\n            std::process::exit(1);\n        }\n    }\n\n    Ok(())\n}",
+      "README.md":"# Calculator\n\nA simple command-line calculator written in Rust.  Supports addition, subtraction, multiplication, and division.\n\n## Usage\n\nRun the program with two numbers and an operator as arguments:\n\n```bash\ncargo run <num1> <operator> <num2>\n```\n\nWhere `<operator>` is one of `+`, `-`, `*`, or `/`.\n\n**Example:**\n\n```bash\ncargo run 5 + 3\n# Output: 8\n\ncargo run 10 / 2\n# Output: 5\n\ncargo run 7 * 4\n# Output: 28\n```\n\n## Error Handling\n\nThe calculator handles division by zero and invalid operator inputs.  Error messages are printed to standard error, and the program exits with a non-zero exit code in case of an error."
+   },
+   "build_output":null,
+   "build_success":true
 }
-... ...
 ```
 
 ### 🛠 Compile a Project
@@ -176,7 +176,7 @@ curl -X POST http://localhost:8000/compile \
 curl -X POST http://localhost:8000/compile-and-fix \
 -H "Content-Type: application/json" \
 -d '{
-  "code": "[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    println!(\"Hello, World!\" // Missing closing parenthesis\n}",
+  "code": "[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    print \"Hello, World!\" \n}",
   "description": "A simple hello world program",
   "max_attempts": 3
 }'
@@ -186,7 +186,7 @@ curl -X POST http://localhost:8000/compile-and-fix \
 
 ```
 {
-  "code": "[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    println!(\"Hello, World!\" // Missing closing parenthesis\n}",
+  "code": "[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    print \"Hello, World!\" \n}",
   "description": "A simple hello world program",
   "max_attempts": 3
 }
@@ -194,29 +194,33 @@ curl -X POST http://localhost:8000/compile-and-fix \
      
 #### 📤 Response:
 
+The `combined_text` field contains the flat text output of Rust project files that is in the same format as the input `code` field.
+
 ```
 {
-  "success": true,
-  "attempts": [
-    {
-      "attempt": 1,
-      "success": false,
-      "output": "   Compiling hello_world v0.1.0 (/tmp/tmpk_0n65md)\nerror: mismatched closing delimiter: `}`\n --> src/main.rs:2:13\n  |\n1 | fn main() {\n  |           - closing delimiter possibly meant for this\n2 |     println!(\"Hello, World!\" // Missing closing parenthesis\n  |             ^ unclosed delimiter\n3 | }\n  | ^ mismatched closing delimiter\n\nerror: could not compile `hello_world` (bin \"hello_world\") due to 1 previous error\n"
-    },
-    {
-      "attempt": 2,
-      "success": true,
-      "output": null
-    }
-  ],
-  "final_files": {
-    "Cargo.toml": "[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]",
-    "src/main.rs": "fn main() {\n    println!(\"Hello, World!\");\n}"
-  },
-  "build_output": "Build successful",
-  "run_output": "Hello, World!\n",
-  "similar_project_used": false,
-  "combined_text": "[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    println!(\"Hello, World!\");\n}"
+   "success": true,
+   "message":"Code fixed and compiled successfully",
+   "attempts":[
+      {
+         "attempt":1,
+         "success":false,
+         "output":"   Compiling hello_world v0.1.0 (/tmp/tmpbgeg4x_e)\nerror: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `\"Hello, World!\"`\n --> src/main.rs:2:11\n  |\n2 |     print \"Hello, World!\" \n  |           ^^^^^^^^^^^^^^^ expected one of 8 possible tokens\n\nerror: could not compile `hello_world` (bin \"hello_world\") due to 1 previous error\n"
+      },
+      {
+         "attempt":2,
+         "success":true,
+         "output":null
+      }
+   ],
+   "combined_text":"[filename: Cargo.toml]\n[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html\n\n[dependencies]\n\n[filename: src/main.rs]\nfn main() {\n    println!(\"Hello, World!\");\n}\n\n[filename: README.md]\n# Hello World\n\nThis is a simple \"Hello, World!\" program in Rust.  It prints the message \"Hello, World!\" to the console.\n\nTo run it:\n\n1.  Make sure you have Rust installed ([https://www.rust-lang.org/](https://www.rust-lang.org/)).\n2.  Save the code as `src/main.rs`.\n3.  Run `cargo run` in the terminal from the project directory.",
+   "files":{
+      "Cargo.toml":"[package]\nname = \"hello_world\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html\n\n[dependencies]",
+      "src/main.rs":"fn main() {\n    println!(\"Hello, World!\");\n}",
+      "README.md":"# Hello World\n\nThis is a simple \"Hello, World!\" program in Rust.  It prints the message \"Hello, World!\" to the console.\n\nTo run it:\n\n1.  Make sure you have Rust installed ([https://www.rust-lang.org/](https://www.rust-lang.org/)).\n2.  Save the code as `src/main.rs`.\n3.  Run `cargo run` in the terminal from the project directory."
+   },
+   "build_output":"Build successful",
+   "run_output":"Hello, World!\n",
+   "build_success":true
 }
 ```
 
