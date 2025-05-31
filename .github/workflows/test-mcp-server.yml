@@ -104,31 +104,15 @@ jobs:
             exit 1
           fi
           
-          # Check if response is JSON (starts with {) or text format
-          if [[ "$RESPONSE" == {* ]]; then
-            # JSON response (likely error)
-            echo "Got JSON response (likely error):"
+          # Check for success in response
+          if ! echo "$RESPONSE" | jq -e '.success == true' > /dev/null; then
+            echo "Compilation failed:"
             echo "$RESPONSE" | jq || echo "$RESPONSE"
-            
-            # Verify it's a valid response with attempts
-            if echo "$RESPONSE" | jq -e '.attempts' > /dev/null; then
-              echo "Compilation couldn't be fixed, but response format is valid"
-            else
-              echo "Invalid error response format"
-              exit 1
-            fi
-          else
-            # Text response (success case)
-            # Verify the response format has filename markers
-            if ! echo "$RESPONSE" | grep -q "\[filename:"; then
-              echo "Response does not contain filename markers:"
-              echo "$RESPONSE" | jq || echo "$RESPONSE"
-              exit 1
-            fi
-            
-            echo "Compile and fix successful! Response contains code files in text format."
-            echo "$RESPONSE" | jq || echo "$RESPONSE"
+            exit 1
           fi
+          
+          echo "Compilation successful!"
+          echo "$RESPONSE" | jq || echo "$RESPONSE"
 
       - name: Test /generate endpoint
         run: |
@@ -248,20 +232,12 @@ jobs:
           # Save response to file for later use
           echo "$RESPONSE" > generate_output.txt
           
-          # Verify the response format has filename markers
-          if ! echo "$RESPONSE" | grep -q "\[filename:"; then
-            echo "Response does not contain filename markers:"
-            echo "$RESPONSE" | head -20
+           # Check for success in response
+          if ! echo "$RESPONSE" | jq -e '.success == true' > /dev/null; then
+            echo "Generation failed:"
             echo "status=error" >> $GITHUB_OUTPUT
+            echo "$RESPONSE" | jq || echo "$RESPONSE"
             exit 1
-          fi
-          
-          # Check if this is a fallback template
-          if echo "$RESPONSE" | grep -q "THIS IS A FALLBACK TEMPLATE - LLM generation failed"; then
-            echo "WARNING: Response contains fallback template - LLM generation failed"
-            echo "status=fallback" >> $GITHUB_OUTPUT
-            # Exit with status 0 to allow workflow to continue, but we know it's a fallback
-            exit 0
           fi
           
           echo "Generate-sync successful! Response contains code files in text format."
