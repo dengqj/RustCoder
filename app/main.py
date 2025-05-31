@@ -38,18 +38,25 @@ parser = ResponseParser()
 compiler = RustCompiler()
 
 # Initialize vector store
-vector_store = QdrantStore(embedding_size=llm_embed_size)
-vector_store.create_collection("project_examples")
-vector_store.create_collection("error_examples")
+try:
+    vector_store = QdrantStore(embedding_size=llm_embed_size)
+    if os.getenv("SKIP_VECTOR_SEARCH", "").lower() != "true":
+        vector_store.create_collection("project_examples")
+        vector_store.create_collection("error_examples")
+        
+        # After initializing vector store
+        from app.load_data import load_project_examples, load_error_examples
 
-# After initializing vector store
-from app.load_data import load_project_examples, load_error_examples
-
-# Check if collections are empty and load data if needed
-if vector_store.count("project_examples") == 0:
-    load_project_examples()
-if vector_store.count("error_examples") == 0:
-    load_error_examples()
+        # Check if collections are empty and load data if needed
+        if vector_store.count("project_examples") == 0:
+            load_project_examples()
+        if vector_store.count("error_examples") == 0:
+            load_error_examples()
+except Exception as e:
+    print(f"Warning: Vector store initialization failed: {e}")
+    print("Continuing without vector store functionality...")
+    # Create a dummy vector store
+    vector_store = None
 
 # Project generation request
 class ProjectRequest(BaseModel):
@@ -161,10 +168,6 @@ async def compile_and_fix_rust(request: dict):
     
     # Pre-process code to fix common syntax errors
     code = request["code"]
-    # Fix missing parenthesis in println! macro
-    # if "println!(" in code and ");" not in code:
-    #     code = code.replace("println!(\"", "println!(\"") 
-    #     code = code.replace("\" //", "\"); //")
     
     # Create temp directory
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -201,8 +204,17 @@ async def compile_and_fix_rust(request: dict):
                 for filename, content in current_files.items():
                     output_text += f"[filename: {filename}]\n{content}\n\n"
                 
-                # For successful fixes, return a text response with the combined code
-                return PlainTextResponse(content=output_text.strip())
+                # Return JSON response instead of plain text
+                return JSONResponse(content={
+                    "status": "success",
+                    "message": "Code fixed and compiled successfully",
+                    "attempts": attempts,
+                    "combined_text": output_text.strip(),
+                    "files": current_files,
+                    "build_output": output or "Build successful",
+                    "run_output": run_output if run_success else None,
+                    "build_success": True
+                })
             
             # If we've reached max attempts without success, stop
             if attempt == max_attempts - 1:
@@ -211,14 +223,15 @@ async def compile_and_fix_rust(request: dict):
             # Extract error context for LLM
             error_context = compiler.extract_error_context(output)
             
-            # Find similar errors in vector DB (commented out for now)
+            # Find similar errors in vector DB
             similar_errors = []
-            try:
-                # Find similar errors in vector DB
-                error_embedding = llm_client.get_embeddings([error_context["full_error"]])[0]
-                similar_errors = vector_store.search("error_examples", error_embedding, limit=3)
-            except Exception as e:
-                print(f"Vector search error (non-critical): {e}")
+            if vector_store is not None and os.getenv("SKIP_VECTOR_SEARCH", "").lower() != "true":
+                try:
+                    # Find similar errors in vector DB
+                    error_embedding = llm_client.get_embeddings([error_context["full_error"]])[0]
+                    similar_errors = vector_store.search("error_examples", error_embedding, limit=3)
+                except Exception as e:
+                    print(f"Vector search error (non-critical): {e}")
             
             # Generate fix prompt
             fix_examples = ""
@@ -257,15 +270,26 @@ Please provide the fixed code for all affected files.
         for filename, content in current_files.items():
             output_text += f"[filename: {filename}]\n{content}\n\n"
         
+        # Add explanation for build failure
+        output_text += "\n# Build failed\n"
+        output_text += f"\n# Note: The build failed after {max_attempts} fix attempts. Common reasons include:\n"
+        output_text += "# - Complex syntax errors that are difficult to fix automatically\n"
+        output_text += "# - Dependencies that cannot be resolved\n"
+        output_text += "# - Logical errors in the code structure\n"
+        if len(attempts) > 0:
+            output_text += f"# The final error was: {attempts[-1]['output'].splitlines()[0] if attempts[-1]['output'] else 'Unknown error'}\n"
+        
         # If we've exhausted all attempts, return error
         return JSONResponse(content={
-            "status": "error",
-            "message": f"Failed to fix code: {attempts[-1]['output']}",
+            "status": "failed",
+            "message": f"Failed to fix code after {max_attempts} attempts",
             "attempts": attempts,
             "combined_text": output_text.strip(),
-            "final_files": current_files
+            "files": current_files,
+            "build_output": attempts[-1]['output'] if attempts else "No compilation attempts were made",
+            "build_success": False
         })
-
+        
 async def handle_project_generation(
     project_id: str, 
     project_dir: str, 
@@ -391,7 +415,7 @@ fn main() {
                 fix_examples = "Here are some examples of similar errors and their fixes:\n\n"
                 for i, err in enumerate(similar_errors):
                     fix_examples += f"Example {i+1}:\n{err['error']}\nFix: {err['solution']}\n\n"
-            
+        
             fix_prompt = f"""
 Here is a Rust project that failed to compile. Help me fix the compilation errors.
 
@@ -592,7 +616,6 @@ fn main() {
                 })
                 
                 # DON'T save status here - remove this line
-                # save_status(temp_dir, status)
                 
                 # Extract error context
                 error_context = compiler.extract_error_context(output)
@@ -654,32 +677,26 @@ Please provide the fixed code for all affected files.
                 except Exception as e:
                     print(f"Error reading file {f}: {e}")
             
-            if success:
-                # Project compiled successfully
-                status.update({
-                    "status": "completed",
-                    "message": "Project generated successfully",
-                    "build_output": output
-                })
-                
-                # Add build status
-                all_files_content += "\n# Build succeeded\n"
-            else:
-                # Build failed
-                status.update({
-                    "status": "failed",
-                    "message": "Failed to generate working project",
-                    "build_output": output
-                })
-                
-                # Add build status
-                all_files_content += "\n# Build failed\n"
+            # Add build status to the combined text
+            all_files_content += "\n# Build " + ("succeeded" if success else "failed") + "\n"
             
-            # DON'T save status here - remove this line
-            # save_status(temp_dir, status)
+            # Add explanation when build fails
+            if not success:
+                all_files_content += f"\n# Note: The build failed because of errors in the generated code. Common reasons include:\n"
+                all_files_content += "# - Incorrect or non-existent crate versions specified in Cargo.toml\n"
+                all_files_content += "# - Improper API usage in the generated code\n"
+                all_files_content += "# - Missing or incompatible dependencies\n"
+                all_files_content += f"# The specific error was: {output.splitlines()[0] if output else 'Unknown error'}\n"
             
-            # Return the response while still inside the with block
-            return PlainTextResponse(content=all_files_content)
+            # Return JSON response instead of plain text
+            return JSONResponse(content={
+                "status": "success" if success else "failed",
+                "message": "Project generated successfully" if success else "Failed to generate working project",
+                "combined_text": all_files_content.strip(),
+                "files": {f: open(os.path.join(temp_dir, f), 'r').read() for f in file_paths if os.path.exists(os.path.join(temp_dir, f))},
+                "build_output": output,
+                "build_success": success
+            })
                 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating project: {str(e)}")
