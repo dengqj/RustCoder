@@ -55,9 +55,9 @@ class QdrantStore:
                         metadata: List[Dict[str, Any]]):
         """Insert documents with embeddings and metadata into collection"""
         points = []
-        for i, (embedding, meta) in enumerate(zip(embeddings, metadata)):
+        for embedding, meta in zip(embeddings, metadata):
             points.append(models.PointStruct(
-                id=i,
+                id=str(uuid.uuid4()),  # Using UUID instead of index
                 vector=embedding,
                 payload=meta
             ))
