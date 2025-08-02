@@ -1,10 +1,11 @@
 name: Test API Endpoints
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  # Temporarily disabled - requires valid LLM API configuration
+  # push:
+  #   branches: [ main ]
+  # pull_request:
+  #   branches: [ main ]
   workflow_dispatch:
 
 jobs:
