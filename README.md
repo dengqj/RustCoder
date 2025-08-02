@@ -2,6 +2,24 @@
 
 AI agents could autonomously write and execute software programs in order to accomplish their own tasks and goals. The Rust language is a perfect fit for AI agents -- as the powerful Rust compiler can provide real-time and autonomous feedback to the agent to ensure the validity of the generated code. The Rust Coder project is an open source effort to provide such tools. It consists of API and MCP services that generate fully functional Rust projects from natural language descriptions. These services leverage LLMs to create complete Rust cargo projects, compile Rust source code, and automatically fix compiler errors.
 
+## Server config
+
+```json
+{
+  "mcpServers": {
+    "rustcoder": {
+      "command": "uvx",
+      "args": ["rustcoder-mcp-server@latest"],
+      "env": {
+        "LLM_API_BASE": "https://api-inference.modelscope.cn/v1",
+        "LLM_MODEL": "Qwen/Qwen3-Coder-30B-A3B-Instruct",
+        "LLM_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
 ---
 
 ## ✨ Features
