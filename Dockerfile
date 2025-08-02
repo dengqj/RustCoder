@@ -29,3 +29,9 @@ COPY . .
 
 # Create necessary directories
 RUN mkdir -p output
+
+# Expose ports
+EXPOSE 8000 3000
+
+# Default command - start the REST API server
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
