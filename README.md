@@ -39,6 +39,26 @@ cd Rust_coder
 
 ### Using Docker (Recommended)
 
+#### Option 1: Using Pre-built Image from GitHub Container Registry
+
+```bash
+# Pull the latest public image
+docker pull ghcr.io/dengqj/rustcoder:latest
+
+# Run with environment variables
+docker run -d \
+  --name rustcoder \
+  -p 8000:8000 \
+  -p 3000:3000 \
+  -e LLM_API_BASE=https://api-inference.modelscope.cn/v1 \
+  -e LLM_MODEL=Qwen/Qwen3-Coder-30B-A3B-Instruct \
+  -e LLM_API_KEY=your-api-key \
+  -e SKIP_VECTOR_SEARCH=true \
+  ghcr.io/dengqj/rustcoder:latest
+```
+
+#### Option 2: Using Docker Compose (Build from Source)
+
 Create the `.env` file and specify your own LLM API server. The default config assumes that you have a [Gaia node like this](https://github.com/GaiaNet-AI/node-configs/tree/main/qwen-2.5-coder-3b-instruct-gte) running on `localhost` port `8080`. The alternative configuration shown below uses a [public Gaia node for coding assistance](https://docs.gaianet.ai/nodes#coding-assistant-agents).
 
 ```

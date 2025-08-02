@@ -50,4 +50,8 @@ jobs:
           context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          labels: |
+            ${{ steps.meta.outputs.labels }}
+            org.opencontainers.image.title=RustCoder MCP Server
+            org.opencontainers.image.description=AI-powered Rust code generation and compilation service
+            org.opencontainers.image.vendor=dengqj
